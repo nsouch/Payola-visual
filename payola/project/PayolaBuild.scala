@@ -4,7 +4,7 @@ import scala.io.Source
 import scala.tools.nsc.io
 import sbt._
 import sbt.Keys._
-import PlayProject._
+import play.Project._
 import scala.util.matching.Regex
 
 object PayolaBuild extends Build
@@ -16,7 +16,7 @@ object PayolaBuild extends Build
     /** Common settings of all projects. */
     object Settings
     {
-        val scalaVersion = "2.9.2"
+        val scalaVersion = "2.10.7"
 
         val libDir = file("lib")
 
@@ -68,16 +68,17 @@ object PayolaBuild extends Build
             "-encoding", "utf8"
         ),
         libraryDependencies ++= Seq(
-            "org.scalatest" %% "scalatest" % "1.6.1" % "test"
+            "org.scalatest" %% "scalatest" % "1.9.2" % "test"
         ),
         resolvers ++= Seq(
             DefaultMavenRepository
         ),
-        compileAndPackage <<= (packageBin in Compile).map {jarFile: File =>
+        compileAndPackage := {
+            val jarFile = (packageBin in Compile).value
             IO.copyFile(jarFile, Settings.targetDir / jarFile.name)
             jarFile
         },
-        (test in Test) <<= (test in Test).dependsOn(compileAndPackage)
+        (test in Test) := (test in Test).dependsOn(compileAndPackage).value
     )
 
     /** Common default settings of the S2Js projects. */
@@ -123,7 +124,7 @@ object PayolaBuild extends Build
             cleanBeforeTests := {
                 new io.Directory(S2JsSettings.compilerTestsTarget).deleteRecursively()
             },
-            (test in Test) <<= (test in Test).dependsOn(cleanBeforeTests)
+            (test in Test) := (test in Test).dependsOn(cleanBeforeTests).value
         )
     ).dependsOn(
         s2JsAdaptersProject
@@ -148,7 +149,7 @@ object PayolaBuild extends Build
                         "-Xplugin:" + compilerJar.absolutePath,
                         "-P:s2js:outputDirectory:" + (outputDir / path).absolutePath
                     ),
-                    clean <<= clean.map {_ =>
+                    clean := {
                         new io.Directory(outputDir / path).deleteRecursively()
                     }
                 )
@@ -202,12 +203,12 @@ object PayolaBuild extends Build
         "data", file("data"),
         settings = payolaSettings ++ Seq(
             libraryDependencies ++= Seq(
-                "org.squeryl" % "squeryl_2.9.2" % "0.9.5",
+                "org.squeryl" %% "squeryl" % "0.9.5-7",
                 "com.h2database" % "h2" % "1.3.165",
                 "mysql" % "mysql-connector-java" % "5.1.18",
                 "postgresql" % "postgresql" % "9.1-901.jdbc4",
                 "org.apache.derby" % "derby" % "10.8.2.2",
-                "org.scalaj" % "scalaj-http_2.9.2" % "0.3.14"
+                "org.scalaj" %% "scalaj-http" % "0.3.16"
             )
         )
     ).dependsOn(
@@ -264,12 +265,14 @@ object PayolaBuild extends Build
         webSharedProject
     ).settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*)
 
-    lazy val webServerProject = PlayProject(
-        "server", PayolaSettings.version, Nil, path = file("web/server"), mainLang = SCALA
+    lazy val webServerProject = play.Project(
+        "server", PayolaSettings.version, Nil, path = file("web/server")
     ).settings(
         //javaHome := Some(file(System.getenv("JAVA_HOME"))),
         javacOptions in Compile ++= Seq("-source", "1.7", "-target", "1.7"),
-        compileAndPackage <<= (packageBin in Compile).dependsOn(clean).map { jarFile: File =>
+        compileAndPackage := {
+            val jarFile = (packageBin in Compile).value
+            clean.value
             // Retrieve the dependencies.
             val dependencyExtensions = List("js", "css")
             val dependencyDirectory = new io.Directory(WebSettings.dependencyDir)
@@ -332,9 +335,11 @@ object PayolaBuild extends Build
 
             jarFile
         },
-        clean <<= clean.map {_ =>
+        clean := {
+            val c = clean.value
             // Delete the dependency file.
             new io.File(WebSettings.dependencyFile).delete()
+            c
         }
     ).dependsOn(
         commonProject, modelProject, scala2JsonProject, webSharedProject, webClientProject
