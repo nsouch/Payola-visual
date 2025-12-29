@@ -8,7 +8,7 @@ import play.Play.autoImport._
 import play.PlayImport._
 import scala.util.matching.Regex
 
-object PayolaBuild extends Build
+object PayolaBuild
 {
     val compileAndPackage = TaskKey[File]("cp", "Compiles and packages the project in one step.")
 
@@ -59,7 +59,7 @@ object PayolaBuild extends Build
     }
 
     /** Common default settings of all projects. */
-    val defaultSettings = Defaults.defaultSettings ++ Seq(
+    val defaultSettings = Defaults.coreDefaultSettings ++ Seq(
         //javaHome := Some(file(System.getenv("JAVA_HOME"))),
         javacOptions ++= Seq("-source", "1.7", "-target", "1.7"),
         scalaVersion := Settings.scalaVersion,
@@ -136,13 +136,13 @@ object PayolaBuild extends Build
     {
         val compilerJar = Settings.targetDir / S2JsSettings.compilerJarName
 
-        def apply(name: String, path: String, outputDir: File, settings: Seq[Project.Setting[_]]) = {
+        def apply(name: String, path: String, outputDir: File, settings: Seq[Def.Setting[_]]) = {
             raw(name, path, outputDir, settings).dependsOn(
                 s2JsRuntimeClientProject
             )
         }
 
-        def raw(name: String, path: String, outputDir: File, projectSettings: Seq[Project.Setting[_]]) = {
+        def raw(name: String, path: String, outputDir: File, projectSettings: Seq[Def.Setting[_]]) = {
             Project(
                 name, file(path),
                 settings = projectSettings ++ Seq(
@@ -274,7 +274,6 @@ object PayolaBuild extends Build
         javacOptions in Compile ++= Seq("-source", "1.7", "-target", "1.7"),
         compileAndPackage := {
             val jarFile = (packageBin in Compile).value
-            clean.value
             // Retrieve the dependencies.
             val dependencyExtensions = List("js", "css")
             val dependencyDirectory = new io.Directory(WebSettings.dependencyDir)
