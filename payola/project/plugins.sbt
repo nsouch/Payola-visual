@@ -13,7 +13,7 @@ resolvers ++= Seq(
 
 //addSbtPlugin("com.github.mpeltonen" % "sbt-idea" % "1.1.0")
 
-addSbtPlugin("com.typesafe.sbteclipse" % "sbteclipse-plugin" % "4.0.0")
+addSbtPlugin("com.typesafe.sbteclipse" % "sbteclipse-plugin" % "3.0.0")
 
 // https://github.com/jrudolph/sbt-dependency-graph/
 addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.8.2")
