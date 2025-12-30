@@ -82,7 +82,7 @@ object Analysis extends PayolaController with Secured
     def visualizeAnonymously(endpointUri: String, graphUri: List[String], classUri: Option[String],
         propertyUri: Option[String]) = maybeAuthenticatedWithRequest { (user, request) =>
 
-        val decodeBase64 = { uri: String => new String(new sun.misc.BASE64Decoder().decodeBuffer(uri))}
+        val decodeBase64 = { uri: String => new String(java.util.Base64.getDecoder.decode(uri))}
 
         val decodedEndpointUri = decodeBase64(endpointUri)
         val decodedGraphUris = graphUri.map(decodeBase64(_))
