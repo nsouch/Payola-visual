@@ -27,9 +27,9 @@ class Graph(val vertices: immutable.Seq[Vertex], val edges: immutable.Seq[Edge],
       * @return The vertex or [[scala.None]] if there isn't one with such URI.
       */
     def getVertexWithURI(vertexURI: String): Option[IdentifiedVertex] = {
-        vertices.collect {
-            case iv: IdentifiedVertex if iv.uri == vertexURI => iv
-        }.headOption
+        vertices.find { v =>
+            v.isInstanceOf[IdentifiedVertex] && v.asInstanceOf[IdentifiedVertex].uri == vertexURI
+        }.map(_.asInstanceOf[IdentifiedVertex])
     }
 
     /**
@@ -47,9 +47,12 @@ class Graph(val vertices: immutable.Seq[Vertex], val edges: immutable.Seq[Edge],
       * @return The vertex or [[scala.None]] if there isn't one with such properties.
       */
     def getVertexWithValue(value: Any, language: Option[String] = None): Option[LiteralVertex] = {
-        vertices.collect {
-            case lv: LiteralVertex if lv.value == value && lv.language == language => lv
-        }.headOption
+        vertices.find { v =>
+            v.isInstanceOf[LiteralVertex] && {
+                val lv = v.asInstanceOf[LiteralVertex]
+                lv.value == value && lv.language == language
+            }
+        }.map(_.asInstanceOf[LiteralVertex])
     }
 
     /**

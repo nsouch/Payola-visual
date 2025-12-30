@@ -35,17 +35,17 @@ trait Product9[+T1, +T2, +T3, +T4, +T5, +T6, +T7, +T8, +T9] extends Product
       */
 
     @throws(classOf[IndexOutOfBoundsException])
-    override def productElement(n: Int) = n match {
-        case 0 => _1
-        case 1 => _2
-        case 2 => _3
-        case 3 => _4
-        case 4 => _5
-        case 5 => _6
-        case 6 => _7
-        case 7 => _8
-        case 8 => _9
-        case _ => throw new IndexOutOfBoundsException(n.toString())
+    override def productElement(n: Int) = {
+        if (n == 0) _1
+        else if (n == 1) _2
+        else if (n == 2) _3
+        else if (n == 3) _4
+        else if (n == 4) _5
+        else if (n == 5) _6
+        else if (n == 6) _7
+        else if (n == 7) _8
+        else if (n == 8) _9
+        else throw new IndexOutOfBoundsException(n.toString())
     }
 
     /** A projection of element 1 of this Product.

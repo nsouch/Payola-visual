@@ -55,9 +55,10 @@ private object Wrapper
                     deserializer.deserialize(js.eval("(" + request.responseText + ")"))
                 } catch {
                     case error => {
-                        val description = error match {
-                            case e: RpcException => e.message
-                            case _ => error.toString
+                        val description = if (error.isInstanceOf[RpcException]) {
+                            error.asInstanceOf[RpcException].message
+                        } else {
+                            error.toString
                         }
                         new RpcException("Exception during deserialization of the remote method result.", description)
                     }
@@ -66,15 +67,13 @@ private object Wrapper
                 new RpcException("The RPC call exited with status code " + request.status + ".")
             }
 
-        result match {
-            case throwable: Throwable => {
-                onException(throwable)
-                throwable
-            }
-            case value => {
-                onSuccess(value)
-                value
-            }
+        if (result.isInstanceOf[Throwable]) {
+            val throwable = result.asInstanceOf[Throwable]
+            onException(throwable)
+            throwable
+        } else {
+            onSuccess(result)
+            result
         }
     }
 
@@ -101,19 +100,21 @@ private object Wrapper
     }
 
     private def processParameter(typeName: String, value: Any): String = {
-        value match {
-            case s: String => s
-            case s: StringOps => s.toString
-            case items: Seq[_] => {
-                val escapedItems: Seq[String] =
-                    if (typeName.endsWith("[scala.String]") || typeName.endsWith("[java.lang.String]")) {
-                        items.map(item => jsonEscapeAndQuote(item.toString))
-                    } else {
-                        items.map(_.toString)
-                    }
-                escapedItems.mkString("[", ",", "]")
-            }
-            case x => x.toString
+        if (value.isInstanceOf[String]) {
+            value.asInstanceOf[String]
+        } else if (value.isInstanceOf[StringOps]) {
+            value.asInstanceOf[StringOps].toString
+        } else if (value.isInstanceOf[Seq[_]]) {
+            val items = value.asInstanceOf[Seq[_]]
+            val escapedItems: Seq[String] =
+                if (typeName.endsWith("[scala.String]") || typeName.endsWith("[java.lang.String]")) {
+                    items.map(item => jsonEscapeAndQuote(item.toString))
+                } else {
+                    items.map(_.toString)
+                }
+            escapedItems.mkString("[", ",", "]")
+        } else {
+            value.toString
         }
     }
 

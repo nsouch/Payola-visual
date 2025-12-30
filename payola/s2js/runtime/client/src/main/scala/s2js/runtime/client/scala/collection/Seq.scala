@@ -143,45 +143,47 @@ trait Seq extends Iterable
     }
 
     def startsWith(prefix: Seq): Boolean = {
-        prefix.length match {
-            case prefixLength if prefixLength > length => false
-            case 0 => true
-            case prefixLength => {
-                var result = true
-                breakable {() =>
-                    var index = 0
-                    prefix.foreach {item =>
-                        if (item != this(index)) {
-                            result = false
-                            break()
-                        }
-                        index += 1
+        val prefixLength = prefix.length
+        if (prefixLength > length) {
+            false
+        } else if (prefixLength == 0) {
+            true
+        } else {
+            var result = true
+            breakable {() =>
+                var index = 0
+                prefix.foreach {item =>
+                    if (item != this(index)) {
+                        result = false
+                        break()
                     }
+                    index += 1
                 }
-                result
             }
+            result
         }
     }
 
     def endsWith(suffix: Seq): Boolean = {
-        suffix.length match {
-            case suffixLength if suffixLength > length => false
-            case 0 => true
-            case suffixLength => {
-                var result = true
-                breakable {() =>
-                    val startIndex = length - suffixLength
-                    var index = 0
-                    suffix.foreach {item =>
-                        if (item != this(startIndex + index)) {
-                            result = false
-                            break()
-                        }
-                        index += 1
+        val suffixLength = suffix.length
+        if (suffixLength > length) {
+            false
+        } else if (suffixLength == 0) {
+            true
+        } else {
+            var result = true
+            breakable {() =>
+                val startIndex = length - suffixLength
+                var index = 0
+                suffix.foreach {item =>
+                    if (item != this(startIndex + index)) {
+                        result = false
+                        break()
                     }
+                    index += 1
                 }
-                result
             }
+            result
         }
     }
 

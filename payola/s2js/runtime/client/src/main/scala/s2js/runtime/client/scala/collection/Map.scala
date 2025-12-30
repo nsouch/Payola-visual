@@ -44,15 +44,17 @@ trait Map[A, B] extends Iterable
     def get(key: A): Option[B] = None
 
     // From MapLike
-    def getOrElse[B1 >: B](key: A, default: => B1): B1 = get(key) match {
-        case Some(v) => v
-        case None => default
+    def getOrElse[B1 >: B](key: A, default: => B1): B1 = {
+        val result = get(key)
+        if (result.isDefined) result.get
+        else default
     }
 
     // From MapLike
-    def apply(key: A): B = get(key) match {
-        case None => default(key)
-        case Some(value) => value
+    def apply(key: A): B = {
+        val result = get(key)
+        if (result.isEmpty) default(key)
+        else result.get
     }
 
     // From MapLike
@@ -85,9 +87,13 @@ trait Map[A, B] extends Iterable
 
     // From mutable.MapLike
     def getOrElseUpdate(key: A, op: => B): B = {
-        get(key) match {
-            case Some(v) => v
-            case None => val d = op; this(key) = d; d
+        val result = get(key)
+        if (result.isDefined) {
+            result.get
+        } else {
+            val d = op
+            this(key) = d
+            d
         }
     }
 

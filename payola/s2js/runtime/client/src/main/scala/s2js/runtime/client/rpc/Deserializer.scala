@@ -50,9 +50,10 @@ class Deserializer extends RpcResultTraverser[Any]
         val instanceJsObject = new JsObject(instance)
 
         // Deserialize the object and register it.
-        instance match {
-            case _: Seq[_] => deserializeSeq(instanceJsObject, properties)
-            case _ => deserializeObject(instanceJsObject, properties, jsObject)
+        if (instance.isInstanceOf[Seq[_]]) {
+            deserializeSeq(instanceJsObject, properties)
+        } else {
+            deserializeObject(instanceJsObject, properties, jsObject)
         }
         context.registerInstance(jsObject, instance)
 
@@ -61,9 +62,11 @@ class Deserializer extends RpcResultTraverser[Any]
 
     private def deserializeSeq(instanceJsObject: JsObject, properties: collection.Map[String, Any]) {
         // Retrieve and set the items.
-        val items = properties.get("__value__") match {
-            case Some(seq: Seq[_]) => seq
-            case _ => Nil
+        val valueOption = properties.get("__value__")
+        val items = if (valueOption.isDefined && valueOption.get.isInstanceOf[Seq[_]]) {
+            valueOption.get.asInstanceOf[Seq[_]]
+        } else {
+            Nil
         }
         instanceJsObject.set("internalJsArray", items.toBuffer)
 

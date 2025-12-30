@@ -34,9 +34,9 @@ trait Product1[+T1] extends Product
       */
 
     @throws(classOf[IndexOutOfBoundsException])
-    override def productElement(n: Int) = n match {
-        case 0 => _1
-        case _ => throw new IndexOutOfBoundsException(n.toString())
+    override def productElement(n: Int) = {
+        if (n == 0) _1
+        else throw new IndexOutOfBoundsException(n.toString())
     }
 
     /** A projection of element 1 of this Product.

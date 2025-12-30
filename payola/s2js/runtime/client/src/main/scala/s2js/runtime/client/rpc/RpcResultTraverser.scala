@@ -30,9 +30,11 @@ abstract class RpcResultTraverser[A] extends JsonTraverser[A]
     protected def futureInstanceVisitor(jsObject: JsObject, properties: collection.Map[String, A], className: String): A
 
     protected def objectVisitor(jsObject: JsObject, properties: collection.Map[String, A]): A = {
-        getObjectClass(jsObject) match {
-            case Some(className: String) => futureInstanceVisitor(jsObject, properties, className)
-            case _ => nonFutureInstanceVisitor(jsObject.wrappedObject, Nil)
+        val classOption = getObjectClass(jsObject)
+        if (classOption.isDefined && classOption.get.isInstanceOf[String]) {
+            futureInstanceVisitor(jsObject, properties, classOption.get.asInstanceOf[String])
+        } else {
+            nonFutureInstanceVisitor(jsObject.wrappedObject, Nil)
         }
     }
 
@@ -46,10 +48,8 @@ abstract class RpcResultTraverser[A] extends JsonTraverser[A]
 
     override protected def objectIsTraversable(jsObject: JsObject): Boolean = {
         // Only objects that have properly specified class should be traversed.
-        getObjectClass(jsObject) match {
-            case Some(_: String) => true
-            case _ => false
-        }
+        val classOption = getObjectClass(jsObject)
+        classOption.isDefined && classOption.get.isInstanceOf[String]
     }
 
     private def getObjectClass(jsObject: JsObject): Option[Any] = {

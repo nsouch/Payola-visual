@@ -175,18 +175,23 @@ object `package`
         if (isUndefined(obj) || obj == null) {
             false
         } else if (isNumber(obj)) {
-            className match {
-                case "scala.Byte" | "scala.Short" | "scala.Int" | "scala.Long" => isInteger(obj)
-                case "scala.Float" | "scala.Double" => true
-                case _ => classNameIsAnyOrAnyVal
+            if (className == "scala.Byte" || className == "scala.Short" || 
+                className == "scala.Int" || className == "scala.Long") {
+                isInteger(obj)
+            } else if (className == "scala.Float" || className == "scala.Double") {
+                true
+            } else {
+                classNameIsAnyOrAnyVal
             }
         } else if (isBoolean(obj)) {
             classNameIsAnyOrAnyVal || className == "scala.Boolean"
         } else if (isString(obj)) {
-            className match {
-                case "scala.Char" => isChar(obj)
-                case "scala.String" => true
-                case _ => classNameIsAnyOrAnyRef
+            if (className == "scala.Char") {
+                isChar(obj)
+            } else if (className == "scala.String") {
+                true
+            } else {
+                classNameIsAnyOrAnyRef
             }
         } else if (isObject(obj) && classNameIsAnyOrAnyRef) {
             true
