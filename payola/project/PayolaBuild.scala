@@ -10,7 +10,7 @@ import scala.util.matching.Regex
 
 object PayolaBuild
 {
-    val compileAndPackage = TaskKey[File]("cp", "Compiles and packages the project in one step.")
+    val compileAndPackage = TaskKey[File]("compile-and-package", "Compiles and packages the project in one step.")
 
     val cleanBeforeTests = TaskKey[Unit]("clean-before-tests", "Cleans the test target directories.")
 
