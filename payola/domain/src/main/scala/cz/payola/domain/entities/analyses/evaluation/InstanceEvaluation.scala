@@ -1,6 +1,6 @@
 package cz.payola.domain.entities.analyses.evaluation
 
-import actors.Actor
+import scala.actors.Actor
 import collection.mutable
 import cz.payola.domain.rdf.Graph
 import cz.payola.domain.entities.plugins.PluginInstance

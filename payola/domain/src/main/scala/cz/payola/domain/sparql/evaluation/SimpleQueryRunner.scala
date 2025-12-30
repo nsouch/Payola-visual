@@ -1,6 +1,6 @@
 package cz.payola.domain.sparql.evaluation
 
-import actors.Actor
+import scala.actors.Actor
 import cz.payola.domain.entities.plugins.DataSource
 
 class SimpleQueryRunner(query: String, dataSource: DataSource,

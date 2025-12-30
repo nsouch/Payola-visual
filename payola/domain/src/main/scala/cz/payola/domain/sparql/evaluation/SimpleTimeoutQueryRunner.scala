@@ -1,8 +1,9 @@
 package cz.payola.domain.sparql.evaluation
 
 import cz.payola.domain.actors.Timer
-import actors.{TIMEOUT, Actor}
+import scala.actors.{TIMEOUT, Actor}
 import cz.payola.domain.entities.plugins.DataSource
+import scala.concurrent.SyncVar
 
 /**
  * An actor that launches and measures running time of a sparql query. It creates another actor that
@@ -18,6 +19,7 @@ class SimpleTimeoutQueryRunner(query: String, dataSource: DataSource,
     private val timer = new Timer(timeout, this)
     private var result: Option[QueryResult] = None
     private var actorChild: Option[SimpleQueryRunner] = None
+    private val responseBox = new SyncVar[Any]()
     def act() {
         timer.start()
         actorChild = Some(new SimpleQueryRunner(query, dataSource, this))
@@ -43,11 +45,12 @@ class SimpleTimeoutQueryRunner(query: String, dataSource: DataSource,
     private def processControlMessage(message: QueryRunnerControl) {
         message match {
             case GetResult => {
-                reply(result)
+                responseBox.put(result)
             }
             case Stop if result.isEmpty => finishEvaluation(StoppedResult)
             case Terminate => {
                 terminateChild()
+                responseBox.put(())
                 exit()
             }
         }
@@ -74,7 +77,8 @@ class SimpleTimeoutQueryRunner(query: String, dataSource: DataSource,
      * End this actor.
      */
     def finish {
-        this !? Terminate
+        this ! Terminate
+        responseBox.get
     }
 
     /**
@@ -82,7 +86,8 @@ class SimpleTimeoutQueryRunner(query: String, dataSource: DataSource,
      * @return current result of the query (the query is still running and the timeout has not orruced if None)
      */
     def getResult: Option[QueryResult] = {
-        (this !? GetResult).asInstanceOf[Option[QueryResult]]
+        this ! GetResult
+        responseBox.get.asInstanceOf[Option[QueryResult]]
     }
 
     /**

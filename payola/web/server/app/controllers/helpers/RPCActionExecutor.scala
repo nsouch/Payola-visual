@@ -1,6 +1,6 @@
 package controllers.helpers
 
-import actors.Actor
+import scala.actors.Actor
 
 class RPCActionExecutor extends Actor
 {

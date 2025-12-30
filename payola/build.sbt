@@ -20,6 +20,7 @@ lazy val domainProject = Project(
     "domain", file("domain"),
     settings = payolaSettings ++ Seq(
         libraryDependencies ++= Seq(
+            "org.scala-lang" % "scala-actors" % scalaVersion.value,
             "org.apache.jena" % "jena-core" % "2.11.1",
             "org.apache.jena" % "jena-arq" % "2.11.1",
             "org.apache.jena" % "jena" % "2.11.0",
@@ -36,6 +37,7 @@ lazy val dataProject = Project(
     "data", file("data"),
     settings = payolaSettings ++ Seq(
         libraryDependencies ++= Seq(
+            "org.scala-lang" % "scala-actors" % scalaVersion.value,
             "org.squeryl" %% "squeryl" % "0.9.5-7",
             "com.h2database" % "h2" % "1.3.165",
             "mysql" % "mysql-connector-java" % "5.1.18",
@@ -52,6 +54,7 @@ lazy val modelProject = Project(
     "model", file("model"),
     settings = payolaSettings ++ Seq(
         libraryDependencies ++= Seq(
+            "org.scala-lang" % "scala-actors" % scalaVersion.value,
             "org.apache.commons" % "commons-lang3" % "3.1",
             "com.fasterxml.jackson.core" % "jackson-core" % "2.3.0-rc1",
             "com.fasterxml.jackson.core" % "jackson-databind" % "2.3.0-rc1",
@@ -86,6 +89,7 @@ lazy val webSharedProject = ScalaToJsProject(
     "shared", "web/shared", WebSettings.javaScriptsDir,
     settings = payolaSettings ++ Seq(
         libraryDependencies ++= Seq(
+            "org.scala-lang" % "scala-actors" % scalaVersion.value,
             "com.typesafe" % "config" % "0.5.0",
             "org.apache.commons" % "commons-email" % "1.2"
         )
@@ -113,5 +117,5 @@ lazy val webRunnerProject = Project(
 )
 
 lazy val webServerProject = PayolaBuild.webServerProject.dependsOn(
-    commonProject, domainProject, modelProject, scala2JsonProject, webSharedProject, webClientProject
+    commonProject, domainProject, dataProject, modelProject, scala2JsonProject, webSharedProject, webClientProject
 )

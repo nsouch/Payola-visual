@@ -167,6 +167,7 @@ object PayolaBuild extends Build
         ).enablePlugins(play.PlayScala).settings(
         version := PayolaSettings.version,
         javaHome := Some(file(System.getenv("JAVA_HOME"))),
+        libraryDependencies += "org.scala-lang" % "scala-actors" % scalaVersion.value,
         // javacOptions in Compile ++= Seq("-source", "1.7", "-target", "1.7"),
         compileAndPackage := {
             val jarFile = (packageBin in Compile).value

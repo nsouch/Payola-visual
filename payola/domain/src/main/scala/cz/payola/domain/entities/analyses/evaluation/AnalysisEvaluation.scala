@@ -1,6 +1,6 @@
 package cz.payola.domain.entities.analyses.evaluation
 
-import actors.{TIMEOUT, Actor}
+import scala.actors.{TIMEOUT, Actor}
 import collection.mutable
 import cz.payola.domain.actors.Timer
 import cz.payola.domain.entities.Analysis

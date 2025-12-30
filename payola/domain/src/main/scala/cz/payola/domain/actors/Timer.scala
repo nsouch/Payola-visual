@@ -1,6 +1,6 @@
 package cz.payola.domain.actors
 
-import actors.{TIMEOUT, Actor}
+import scala.actors.{TIMEOUT, Actor}
 
 /**
   * An actor that sends a timeout message to the timeoutReceiver after specified number of milliseconds.
