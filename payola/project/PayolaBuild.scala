@@ -29,7 +29,7 @@ object PayolaBuild extends Build
     {
         val version = "0.2"
 
-        val compilerJarName = "compiler_%s-%s.jar".format(Settings.scalaVersion, version)
+        val compilerJarName = "compiler_2.10-%s.jar".format(version)
 
         val compilerTestsTarget = file("s2js/compiler/target/tests")
 

@@ -113,5 +113,5 @@ lazy val webRunnerProject = Project(
 )
 
 lazy val webServerProject = PayolaBuild.webServerProject.dependsOn(
-    commonProject, modelProject, scala2JsonProject, webSharedProject, webClientProject
+    commonProject, domainProject, modelProject, scala2JsonProject, webSharedProject, webClientProject
 )
