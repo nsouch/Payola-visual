@@ -1,8 +1,8 @@
 package cz.payola.domain.entities.analyses.evaluation
 
-import actors.{TIMEOUT, Actor}
+import akka.actor.{Actor, ActorRef, Props}
 import collection.mutable
-import cz.payola.domain.actors.Timer
+import cz.payola.domain.actors.{Timer, TimerTimeout}
 import cz.payola.domain.entities.Analysis
 import cz.payola.domain.entities.analyses._
 import cz.payola.domain.entities.plugins.PluginInstance
@@ -19,79 +19,67 @@ import cz.payola.domain.entities.analyses.optimization.phases._
   */
 class AnalysisEvaluation(val analysis: Analysis, private val timeout: Option[Long]) extends Actor
 {
-    private val timer = new Timer(timeout, this)
+    private var timer: Option[ActorRef] = None
 
-    private val instanceEvaluations = new mutable.ArrayBuffer[InstanceEvaluation]
+    private val instanceEvaluations = new mutable.ArrayBuffer[ActorRef]
 
     private var progress: AnalysisEvaluationProgress = AnalysisEvaluationProgress(Nil, Map.empty, Nil, Map.empty)
 
     private var result: Option[AnalysisResult] = None
+    
+    private var optimizedAnalysis: OptimizedAnalysis = _
 
-    def act() {
-        val optimizedAnalysis = optimizeAnalysis()
+    override def preStart(): Unit = {
+        optimizedAnalysis = optimizeAnalysis()
 
-        def startInstanceEvaluation(instance: PluginInstance, outputProcessor: Option[Graph] => Unit) {
-            val evaluation = new InstanceEvaluation(instance, this, outputProcessor)
+        def startInstanceEvaluation(instance: PluginInstance, outputProcessor: Option[Graph] => Unit): ActorRef = {
+            val evaluation = context.actorOf(Props(new InstanceEvaluation(instance, self, outputProcessor)))
             instanceEvaluations += evaluation
-            evaluation.start()
 
             // Start the preceding plugin evaluations.
             optimizedAnalysis.pluginInstanceInputBindings(instance).foreach { binding =>
                 val instanceOutputProcessor = bindingOutputProcessor(evaluation, binding.targetInputIndex) _
                 startInstanceEvaluation(binding.sourcePluginInstance, instanceOutputProcessor)
             }
+            
+            evaluation
         }
 
         // Start the evaluation of the analysis by starting the output plugin instance.
-        timer.start()
+        timer = Some(context.actorOf(Props(new Timer(timeout, self))))
         progress = AnalysisEvaluationProgress(Nil, Map.empty, optimizedAnalysis.allOriginalInstances, Map.empty)
         startInstanceEvaluation(optimizedAnalysis.outputInstance.get, analysisOutputProcessor)
+    }
 
-        loop {
-            react {
-                case InstanceEvaluationProgress(i, v) => {
-                    optimizedAnalysis.originalInstances(i).foreach { originalInstance =>
-                        progress = progress.withChangedProgress(originalInstance, v)
-                    }
-                }
-                case InstanceEvaluationError(i, t) => {
-                    optimizedAnalysis.originalInstances(i).foreach { originalInstance =>
-                        progress = progress.withError(originalInstance, t)
-                    }
-                }
-                case InstanceEvaluationInput(_, graph) => {
-                    finishEvaluation(graph.map(g => Success(g, progress.errors)).getOrElse {
-                        Error(
-                            new AnalysisException("An error occured during evaluation of the analysis."),
-                            progress.errors
-                        )
-                    })
-                }
-                case TIMEOUT => finishEvaluation(Timeout)
-                case control: AnalysisEvaluationControl => processControlMessage(control)
+    def receive: Receive = active
+
+    def active: Receive = {
+        case InstanceEvaluationProgress(i, v) =>
+            optimizedAnalysis.originalInstances(i).foreach { originalInstance =>
+                progress = progress.withChangedProgress(originalInstance, v)
             }
-        }
+        case InstanceEvaluationError(i, t) =>
+            optimizedAnalysis.originalInstances(i).foreach { originalInstance =>
+                progress = progress.withError(originalInstance, t)
+            }
+        case InstanceEvaluationInput(_, graph) =>
+            finishEvaluation(graph.map(g => Success(g, progress.errors)).getOrElse {
+                Error(
+                    new AnalysisException("An error occured during evaluation of the analysis."),
+                    progress.errors
+                )
+            })
+            context.become(finished)
+        case TimerTimeout => 
+            finishEvaluation(TimeoutResult)
+            context.become(finished)
+        case control: AnalysisEvaluationControl => 
+            processControlMessage(control)
     }
 
-    /**
-      * Progress of the analysis evaluation.
-      */
-    def getProgress: AnalysisEvaluationProgress = {
-        (this !? GetProgress).asInstanceOf[AnalysisEvaluationProgress]
-    }
-
-    /**
-      * Result of the analysis evaluation. [[scala.None]] in case the evaluation hasn't finished yet.
-      */
-    def getResult: Option[AnalysisResult] = {
-        (this !? GetResult).asInstanceOf[Option[AnalysisResult]]
-    }
-
-    /**
-      * Whether the analysis evaluation has finished.
-      */
-    def isFinished: Boolean = {
-        getResult.isDefined
+    def finished: Receive = {
+        case control: AnalysisEvaluationControl => 
+            processControlMessage(control)
     }
 
     /**
@@ -120,7 +108,7 @@ class AnalysisEvaluation(val analysis: Analysis, private val timeout: Option[Lon
       * @param targetInputIndex Index of the target plugin instance evaluation input.
       * @param output The output graph to send.
       */
-    private def bindingOutputProcessor(targetEvaluation: InstanceEvaluation, targetInputIndex: Int)
+    private def bindingOutputProcessor(targetEvaluation: ActorRef, targetInputIndex: Int)
         (output: Option[Graph]) {
         targetEvaluation ! InstanceEvaluationInput(targetInputIndex, output)
     }
@@ -131,7 +119,7 @@ class AnalysisEvaluation(val analysis: Analysis, private val timeout: Option[Lon
       * @param output The output graph to send.
       */
     private def analysisOutputProcessor(output: Option[Graph]) {
-        this ! InstanceEvaluationInput(0, output)
+        self ! InstanceEvaluationInput(0, output)
     }
 
     /**
@@ -140,13 +128,12 @@ class AnalysisEvaluation(val analysis: Analysis, private val timeout: Option[Lon
       */
     private def processControlMessage(message: AnalysisEvaluationControl) {
         message match {
-            case GetProgress => reply(progress)
-            case GetResult => reply(result)
+            case GetProgress => sender() ! progress
+            case GetResult => sender() ! result
             case Stop if result.isEmpty => finishEvaluation(Stopped)
-            case Terminate => {
+            case Terminate =>
                 terminateDependentActors()
-                exit()
-            }
+                context.stop(self)
         }
     }
 
@@ -157,21 +144,13 @@ class AnalysisEvaluation(val analysis: Analysis, private val timeout: Option[Lon
     private def finishEvaluation(analysisResult: AnalysisResult) {
         terminateDependentActors()
         result = Some(analysisResult)
-
-        // Respond only to control messages.
-        loop {
-            react {
-                case control: AnalysisEvaluationControl => processControlMessage(control)
-                case _ =>
-            }
-        }
     }
 
     /**
       * Terminates all the dependent actors.
       */
     private def terminateDependentActors() {
-        timer ! None
-        instanceEvaluations.foreach(_ ! None)
+        timer.foreach(context.stop)
+        instanceEvaluations.foreach(context.stop)
     }
 }

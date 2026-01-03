@@ -1,14 +1,13 @@
 package controllers.helpers
 
-import actors.Actor
+import akka.actor.Actor
 
 class RPCActionExecutor extends Actor
 {
-    def act() {
-        react {
-            case RPCActionMessage(methodToRun, runnableObj, paramArray) => {
-                // Store the sender of the query so the result can be sent to him later.
-                val querier = sender
+    def receive: Receive = {
+        case RPCActionMessage(methodToRun, runnableObj, paramArray) =>
+            // Store the sender of the query so the result can be sent to him later.
+            val querier = sender()
 
                 var callbackCalled = false
 
@@ -49,8 +48,7 @@ class RPCActionExecutor extends Actor
                 }catch{
                     case e: Throwable => failCallback(e)
                 }
-            }
-            case _ =>
-        }
+        
+        case _ =>
     }
 }

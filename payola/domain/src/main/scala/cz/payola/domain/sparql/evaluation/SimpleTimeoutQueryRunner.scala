@@ -1,8 +1,11 @@
 package cz.payola.domain.sparql.evaluation
 
-import cz.payola.domain.actors.Timer
-import actors.{TIMEOUT, Actor}
-import cz.payola.domain.entities.plugins.DataSource
+import cz.payola.domain.actors.{Timer, TimerTimeout}
+import akka.actor.{Actor, ActorRef, Props}
+import akka.pattern.ask
+import akka.util.Timeout
+import scala.concurrent.duration._
+import scala.concurrent.Await
 
 /**
  * An actor that launches and measures running time of a sparql query. It creates another actor that
@@ -12,69 +15,66 @@ import cz.payola.domain.entities.plugins.DataSource
  * @param dataSource On what datasource to perform the query.
  * @param timeout How long to wait for the results.
  */
-class SimpleTimeoutQueryRunner(query: String, dataSource: DataSource,
+class SimpleTimeoutQueryRunner(query: String, dataSource: cz.payola.domain.entities.plugins.DataSource,
     private val timeout: Option[Long]) extends Actor {
 
-    private val timer = new Timer(timeout, this)
+    private var timer: Option[ActorRef] = None
     private var result: Option[QueryResult] = None
-    private var actorChild: Option[SimpleQueryRunner] = None
-    def act() {
-        timer.start()
-        actorChild = Some(new SimpleQueryRunner(query, dataSource, this))
-        actorChild.get.start()
-        loop {
-            react {
-                case ErrorResult => {
-                    finishEvaluation(ErrorResult)
-                }
-                case SuccessResult(languagesGraph) => {
-                    result = Some(SuccessResult(languagesGraph))
-                }
-                case TIMEOUT => {
-                    finishEvaluation(TimeoutResult)
-                }
-                case control: QueryRunnerControl => {
-                    processControlMessage(control)
-                }
-            }
-        }
+    private var actorChild: Option[ActorRef] = None
+    
+    override def preStart(): Unit = {
+        timer = Some(context.actorOf(Props(new Timer(timeout, self))))
+        actorChild = Some(context.actorOf(Props(new SimpleQueryRunner(query, dataSource))))
+        actorChild.foreach(_ ! "run")
+    }
+
+    def receive: Receive = active
+
+    def active: Receive = {
+        case ErrorResult(e) =>
+            finishEvaluation(ErrorResult(e))
+        case SuccessResult(languagesGraph) =>
+            result = Some(SuccessResult(languagesGraph))
+        case TimerTimeout =>
+            finishEvaluation(TimeoutResult)
+        case control: QueryRunnerControl =>
+            processControlMessage(control)
+    }
+
+    def finished: Receive = {
+        case control: QueryRunnerControl =>
+            processControlMessage(control)
     }
 
     private def processControlMessage(message: QueryRunnerControl) {
         message match {
-            case GetResult => {
-                reply(result)
-            }
-            case Stop if result.isEmpty => finishEvaluation(StoppedResult)
-            case Terminate => {
+            case GetResult =>
+                sender() ! result
+            case Stop if result.isEmpty => 
+                finishEvaluation(StoppedResult)
+            case Terminate =>
                 terminateChild()
-                exit()
-            }
+                context.stop(self)
         }
     }
 
     private def finishEvaluation(queryResult: QueryResult) {
         terminateChild()
         result = Some(queryResult)
-        loop {
-            react {
-                case control: QueryRunnerControl => {
-                    processControlMessage(control)
-                }
-            }
-        }
+        context.become(finished)
     }
 
     private def terminateChild() {
-        timer ! None
-        actorChild.foreach{_ ! None}
+        timer.foreach(context.stop)
+        actorChild.foreach(context.stop)
     }
 
     /**
      * End this actor.
      */
     def finish {
-        this !? Terminate
+        implicit val t = Timeout(5.seconds)
+        Await.result(self ? Terminate, t.duration)
     }
 
     /**
@@ -82,7 +82,8 @@ class SimpleTimeoutQueryRunner(query: String, dataSource: DataSource,
      * @return current result of the query (the query is still running and the timeout has not orruced if None)
      */
     def getResult: Option[QueryResult] = {
-        (this !? GetResult).asInstanceOf[Option[QueryResult]]
+        implicit val t = Timeout(5.seconds)
+        Await.result((self ? GetResult).mapTo[Option[QueryResult]], t.duration)
     }
 
     /**

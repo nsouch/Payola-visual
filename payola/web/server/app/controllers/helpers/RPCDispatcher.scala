@@ -4,6 +4,12 @@ import controllers.InvocationInfo
 import scala.collection.mutable
 import cz.payola.domain.entities.User
 import s2js.runtime.shared.rpc.RpcException
+import cz.payola.domain.ActorSystemHolder
+import akka.actor.Props
+import akka.pattern.ask
+import akka.util.{Timeout => AkkaTimeout}
+import scala.concurrent.Await
+import scala.concurrent.duration._
 
 class RPCDispatcher(jsonSerializer: RPCSerializer)
 {
@@ -269,12 +275,13 @@ class RPCDispatcher(jsonSerializer: RPCSerializer)
      * @return
      */
     private def executeWithActors(paramArray: Array[java.lang.Object], paramsSize: Int, dto: InvocationInfo) = {
-        // create and start the actor
-        val executor = new RPCActionExecutor()
-        executor.start()
+        // create the actor
+        val executor = ActorSystemHolder.system.actorOf(Props[RPCActionExecutor])
 
-        // invoke the remote method (!? for synchronous behaviour)
-        val result = executor !? RPCActionMessage(dto.methodToRun, dto.runnableObj, paramArray)
+        // invoke the remote method (ask for synchronous behaviour)
+        implicit val timeout: AkkaTimeout = AkkaTimeout(30.seconds)
+        val future = executor ? RPCActionMessage(dto.methodToRun, dto.runnableObj, paramArray)
+        val result = Await.result(future, timeout.duration)
 
         result match {
             case resultMessage: ActionExecutorSuccess => resultMessage.result

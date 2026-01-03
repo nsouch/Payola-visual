@@ -19,8 +19,8 @@ case class AnalysisEvaluationProgress(evaluatedInstances: immutable.Seq[PluginIn
       * Percentual representation of the analysis evaluation progress.
       */
     def value: Double = {
-        val evaluatedInstanceCount = int2double(evaluatedInstances.length)
-        val unfinishedInstanceCount = int2double(runningInstances.toList.length + pendingInstances.length)
+        val evaluatedInstanceCount = evaluatedInstances.length.toDouble
+        val unfinishedInstanceCount = (runningInstances.toList.length + pendingInstances.length).toDouble
         val instanceCount = evaluatedInstanceCount + unfinishedInstanceCount
         (evaluatedInstanceCount + runningInstances.map(_._2).sum) / instanceCount
     }

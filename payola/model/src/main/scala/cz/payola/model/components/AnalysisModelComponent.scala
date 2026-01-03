@@ -25,8 +25,8 @@ import cz.payola.data.squeryl.entities.AnalysisResult
 trait AnalysisModelComponent extends EntityModelComponent
 {
     self: DataContextComponent with PrivilegeModelComponent =>
-    val runningEvaluations: HashMap[String, (Option[User], AnalysisEvaluation, Long)] = new
-            HashMap[String, (Option[User], AnalysisEvaluation, Long)]
+    val runningEvaluations: HashMap[String, (Option[User], Analysis, AnalysisEvaluationFacade, Long)] = new
+            HashMap[String, (Option[User], Analysis, AnalysisEvaluationFacade, Long)]
 
     lazy val analysisModel = new ShareableEntityModel(analysisRepository, classOf[Analysis])
     {
@@ -210,7 +210,7 @@ trait AnalysisModelComponent extends EntityModelComponent
 
         def run(analysis: Analysis, oldEvaluationId: String, user: Option[User] = None) = {
             if (runningEvaluations.isDefinedAt(oldEvaluationId)) {
-                if (!runningEvaluations.get(oldEvaluationId).filter(_._2.analysis.id == analysis.id).isEmpty) {
+                if (!runningEvaluations.get(oldEvaluationId).filter(_._2.id == analysis.id).isEmpty) {
                     runningEvaluations.remove(oldEvaluationId)
                 }
             }
@@ -220,7 +220,7 @@ trait AnalysisModelComponent extends EntityModelComponent
 
             val evaluationId = IDGenerator.newId
             runningEvaluations
-                .put(evaluationId, (user, analysis.evaluate(), (new java.util.Date).getTime))
+                .put(evaluationId, (user, analysis, analysis.evaluate(), (new java.util.Date).getTime))
 
             evaluationId
         }
@@ -229,7 +229,7 @@ trait AnalysisModelComponent extends EntityModelComponent
             val date = new java.sql.Timestamp(System.currentTimeMillis)
             runningEvaluations.foreach {
                 tuple =>
-                    if (tuple._2._3 + (20 * 60 * 1000) < date.getTime) {
+                    if (tuple._2._4 + (20 * 60 * 1000) < date.getTime) {
                         runningEvaluations.remove(tuple._1)
                     }
             }
@@ -242,9 +242,9 @@ trait AnalysisModelComponent extends EntityModelComponent
         def getEvaluationState(evaluationId: String, user: Option[User] = None) : EvaluationState = {
             val evaluationTuple = getEvaluationTupleForIDAndPerformSecurityChecks(evaluationId, user)
 
-            runningEvaluations.put(evaluationId, (evaluationTuple._1, evaluationTuple._2, System.currentTimeMillis))
+            runningEvaluations.put(evaluationId, (evaluationTuple._1, evaluationTuple._2, evaluationTuple._3, System.currentTimeMillis))
 
-            val evaluation = evaluationTuple._2
+            val evaluation = evaluationTuple._3
 
             evaluation.getResult.map {
                 case r: Error => EvaluationError(transformException(r.error),
@@ -256,7 +256,7 @@ trait AnalysisModelComponent extends EntityModelComponent
                         r.instanceErrors.toList.map {
                             e => (e._1, transformException(e._2))
                         })
-                case Timeout => new EvaluationTimeout
+                case TimeoutResult => new EvaluationTimeout
                 case _ => throw new Exception("Unhandled evaluation state")
             }.getOrElse {
                 val progress = evaluation.getProgress

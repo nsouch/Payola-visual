@@ -2,7 +2,9 @@ package cz.payola.domain.entities
 
 import scala.collection.mutable
 import cz.payola.domain.entities.analyses._
-import cz.payola.domain.entities.analyses.evaluation.AnalysisEvaluation
+import cz.payola.domain.entities.analyses.evaluation.{AnalysisEvaluation, AnalysisEvaluationFacade}
+import cz.payola.domain.actors.ActorSystemHolder
+import akka.actor.Props
 import plugins._
 import cz.payola.domain.Entity
 import cz.payola.domain.entities.settings.OntologyCustomization
@@ -38,13 +40,13 @@ class Analysis(protected var _name: String, protected var _owner: Option[User])
     /**
       * Starts evaluation of the analysis.
       * @param timeout Maximal execution time in milliseconds.
-      * @return An instance of the [[cz.payola.domain.entities.analyses.evaluation.AnalysisEvaluation]] which can be
+      * @return An instance of the [[cz.payola.domain.entities.analyses.evaluation.AnalysisEvaluationFacade]] which can be
       *         queried about the analysis evaluation progress and the result.
       */
-    def evaluate(timeout: Option[Long] = None): AnalysisEvaluation = {
-        val evaluation = new AnalysisEvaluation(this, timeout)
-        evaluation.start()
-        evaluation
+    def evaluate(timeout: Option[Long] = None): AnalysisEvaluationFacade = {
+        import ActorSystemHolder.system
+        val actorRef = system.actorOf(Props(new AnalysisEvaluation(this, timeout)))
+        new AnalysisEvaluationFacade(actorRef)
     }
 
     def expand(accessibleAnalyses: Seq[Analysis]) {

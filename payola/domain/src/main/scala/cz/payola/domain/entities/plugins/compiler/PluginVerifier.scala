@@ -137,7 +137,7 @@ class PluginVerifier(val global: Global) extends Plugin
                 tree match {
                     case cd@ClassDef(mods, _, tparams, impl) if pluginClassName.exists(_ == cd.symbol.fullName) => {
                         val uniqueId = java.util.UUID.randomUUID.toString.replace("-", "_")
-                        val uniquePluginName = (("Plugin_" + uniqueId): Name).toTypeName
+                        val uniquePluginName = global.newTypeName("Plugin_" + uniqueId)
                         val copy = treeCopy.ClassDef(cd, cd.mods, uniquePluginName, cd.tparams, cd.impl)
                         copy.symbol.name = uniquePluginName
 

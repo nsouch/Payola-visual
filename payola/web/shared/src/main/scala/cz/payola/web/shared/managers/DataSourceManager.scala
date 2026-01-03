@@ -154,9 +154,7 @@ import scala.Some
                              """
         val dataSource = getDataSource(dataSourceId, user)
         val runner = dataSource.map{d =>
-            val runnerLauncher = new SimpleTimeoutQueryRunner(languagesQuery, d, Some(10000)) //10 seconds
-            runnerLauncher.start()
-            runnerLauncher
+            new SimpleTimeoutQueryRunner(languagesQuery, d, Some(10000)) //10 seconds
         }
         while(runner.isDefined && !runner.get.isFinished) {
             Thread.sleep(5000)

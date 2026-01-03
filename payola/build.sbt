@@ -179,7 +179,8 @@ lazy val domainProject = Project(
         "org.apache.jena" % "jena" % "2.11.0",
         "org.apache.httpcomponents" % "httpclient" % "4.2.4",
         "commons-io" % "commons-io" % "2.4",
-        "commons-lang" % "commons-lang" % "2.4"
+        "commons-lang" % "commons-lang" % "2.4",
+        "com.typesafe.akka" %% "akka-actor" % "2.5.32"
     )
 ).dependsOn(
     commonProject
@@ -209,7 +210,8 @@ lazy val modelProject = Project(
         "org.apache.commons" % "commons-lang3" % "3.1",
         "com.fasterxml.jackson.core" % "jackson-core" % "2.3.0-rc1",
         "com.fasterxml.jackson.core" % "jackson-databind" % "2.3.0-rc1",
-        "com.fasterxml.jackson.core" % "jackson-annotations" % "2.3.0-rc1"
+        "com.fasterxml.jackson.core" % "jackson-annotations" % "2.3.0-rc1",
+        "com.typesafe.akka" %% "akka-actor" % "2.5.32"
     )
 ).dependsOn(
     commonProject, domainProject, dataProject

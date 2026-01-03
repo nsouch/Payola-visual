@@ -73,11 +73,11 @@ trait PluginModelComponent extends EntityModelComponent
          * @author Jiri Helmich
          */
         def cloneParameter(parameterValue: ParameterValue[_], name: String): Parameter[_] = {
-            val parameter = parameterValue.parameter
+            val parameter: Parameter[_] = parameterValue.parameter
 
             parameter match {
-                case x: StringParameter => new
-                        StringParameter(name+"$"+parameterValue.id, x.defaultValue, x.isMultiline, x.isPattern, x.isMultiline)
+                case x: StringParameter =>
+                        new StringParameter(name+"$"+parameterValue.id, x.defaultValue, x.isMultiline, x.isPattern, x.isMultiline)
                 case x: BooleanParameter => new BooleanParameter(name+"$"+parameterValue.id, x.defaultValue)
                 case x: FloatParameter => new FloatParameter(name+"$"+parameterValue.id, x.defaultValue)
                 case x: IntParameter => new IntParameter(name+"$"+parameterValue.id, x.defaultValue)

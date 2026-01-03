@@ -1,19 +1,18 @@
 package cz.payola.domain.sparql.evaluation
 
-import actors.Actor
+import akka.actor.Actor
 import cz.payola.domain.entities.plugins.DataSource
 
-class SimpleQueryRunner(query: String, dataSource: DataSource,
-    private val parentRunner: SimpleTimeoutQueryRunner) extends Actor {
+class SimpleQueryRunner(query: String, dataSource: DataSource) extends Actor {
 
-    def act() {
-        try{
-            val resultGraph = dataSource.executeQuery(query)
-            parentRunner ! SuccessResult(Some(resultGraph))
-
-        } catch {
-            case e: Throwable => parentRunner ! ErrorResult(e)
-            case _ => parentRunner ! ErrorResult
-        }
+    def receive: Receive = {
+        case "run" =>
+            try {
+                val resultGraph = dataSource.executeQuery(query)
+                sender() ! SuccessResult(Some(resultGraph))
+            } catch {
+                case e: Throwable => sender() ! ErrorResult(e)
+            }
+            context.stop(self)
     }
 }

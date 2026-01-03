@@ -26,7 +26,7 @@ case class Success(outputGraph: Graph, instanceErrors: Map[PluginInstance, Throw
 /**
   * A result meaning that the analysis evaluation hasn't finished in the specified time limit.
   */
-object Timeout extends AnalysisResult
+object TimeoutResult extends AnalysisResult
 
 /**
   * A result meaning that the analysis evaluation has been stopped.

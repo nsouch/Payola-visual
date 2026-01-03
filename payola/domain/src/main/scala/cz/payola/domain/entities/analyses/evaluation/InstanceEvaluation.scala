@@ -1,6 +1,6 @@
 package cz.payola.domain.entities.analyses.evaluation
 
-import actors.Actor
+import akka.actor.{Actor, ActorRef}
 import collection.mutable
 import cz.payola.domain.rdf.Graph
 import cz.payola.domain.entities.plugins.PluginInstance
@@ -12,29 +12,26 @@ import cz.payola.domain.entities.plugins.PluginInstance
   * @param analysisEvaluation The analysis evaluation that encapsulates the plugin instance evaluation.
   * @param outputProcessor A function that sends the evaluation output to a particular recipient.
   */
-class InstanceEvaluation(private val instance: PluginInstance, private val analysisEvaluation: AnalysisEvaluation,
+class InstanceEvaluation(private val instance: PluginInstance, private val analysisEvaluation: ActorRef,
     private val outputProcessor: Option[Graph] => Unit)
     extends Actor
 {
-    def act() {
+    private val inputs = new mutable.ArrayBuffer[InstanceEvaluationInput]()
+
+    override def preStart(): Unit = {
         if (instance.plugin.inputCount == 0) {
-            // If the instance has no inputs, then it may be evaluated right away.
             evaluateInstance(Nil.toIndexedSeq)
-        } else {
-            // Wait for all the inputs, then evaluate the instance.
-            val inputs = new mutable.ArrayBuffer[InstanceEvaluationInput]()
-            loop {
-                react {
-                    case input: InstanceEvaluationInput => {
-                        inputs += input
-                        if (inputs.length == instance.plugin.inputCount) {
-                            evaluateInstance(inputs.sortBy(_.index).map(_.value).toIndexedSeq)
-                        }
-                    }
-                    case _ => exit()
-                }
-            }
         }
+    }
+
+    def receive: Receive = {
+        case input: InstanceEvaluationInput =>
+            inputs += input
+            if (inputs.length == instance.plugin.inputCount) {
+                evaluateInstance(inputs.sortBy(_.index).map(_.value).toIndexedSeq)
+            }
+        case _ => 
+            context.stop(self)
     }
 
     /**
