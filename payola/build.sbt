@@ -8,13 +8,20 @@ import scala.util.matching.Regex
 import com.typesafe.sbt.packager.Keys._
 import com.typesafe.sbt.SbtNativePackager.autoImport._
 
+/** To enable source classifiers and download the sources of your binary dependencies.
+ * See https://scalacenter.github.io/bloop/docs/build-tools/sbt
+ * This option is required if you are using bloop with IDEs (e.g. Metals or IntelliJ) and
+ * expect navigation to binary dependencies to work. After the option has been enabled,
+ * the bloop configuration files of your projects should have one artifact per module with the "sources" classifier.
+*/
+bloopExportJarClassifiers in Global := Some(Set("sources"))
 
 val compileAndPackage = TaskKey[File]("compile-and-package", "Compiles and packages the project in one step.")
 
 val cleanBeforeTests = TaskKey[Unit]("clean-before-tests", "Cleans the test target directories.")
 
 /** Common settings of all projects. */
-val scalaVersionSetting = "2.12.20"
+val scalaVersion = "2.12.20"
 val scalaBinaryVersion = "2.12"
 val libDir = file("lib")
 val targetDir = file("lib")
@@ -44,7 +51,7 @@ val javaScriptsDir = dependencyDir / "javascripts"
 /** Common default settings of all projects. */
 val defaultSettings = Seq(
     javaHome := Some(file(System.getenv("JAVA_HOME"))),
-    scalaVersion := scalaVersionSetting,
+    scalaVersion := scalaVersion,
     scalacOptions ++= Seq(
         "-deprecation",
         "-unchecked",
@@ -102,7 +109,7 @@ lazy val s2JsCompilerProject = Project(
 ).settings(s2JsSettings)
 .settings(
     libraryDependencies ++= Seq(
-        "org.scala-lang" % "scala-compiler" % scalaVersionSetting
+        "org.scala-lang" % "scala-compiler" % scalaVersion
     ),
     testOptions ++= Seq(
         Tests.Argument("-Dwd=" + compilerTestsTarget.absolutePath),
