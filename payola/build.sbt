@@ -8,6 +8,9 @@ import scala.util.matching.Regex
 import com.typesafe.sbt.packager.Keys._
 import com.typesafe.sbt.SbtNativePackager.autoImport._
 
+/** See plugins.sbt */
+ThisBuild / evictionErrorLevel := Level.Warn
+
 /** To enable source classifiers and download the sources of your binary dependencies.
  * See https://scalacenter.github.io/bloop/docs/build-tools/sbt
  * This option is required if you are using bloop with IDEs (e.g. Metals or IntelliJ) and
@@ -21,7 +24,7 @@ val compileAndPackage = TaskKey[File]("compile-and-package", "Compiles and packa
 val cleanBeforeTests = TaskKey[Unit]("clean-before-tests", "Cleans the test target directories.")
 
 /** Common settings of all projects. */
-val scalaVersion = "2.12.20"
+val scalaVersionSetting = "2.12.20"
 val scalaBinaryVersion = "2.12"
 val libDir = file("lib")
 val targetDir = file("lib")
@@ -51,7 +54,7 @@ val javaScriptsDir = dependencyDir / "javascripts"
 /** Common default settings of all projects. */
 val defaultSettings = Seq(
     javaHome := Some(file(System.getenv("JAVA_HOME"))),
-    scalaVersion := scalaVersion,
+    scalaVersion := scalaVersionSetting,
     scalacOptions ++= Seq(
         "-deprecation",
         "-unchecked",
@@ -64,11 +67,11 @@ val defaultSettings = Seq(
         DefaultMavenRepository
     ),
     compileAndPackage := {
-        val jarFile = (packageBin in Compile).value
+        val jarFile = (Compile / packageBin).value
         IO.copyFile(jarFile, targetDir / jarFile.name)
         jarFile
     },
-    (test in Test) := (test in Test).dependsOn(compileAndPackage).value
+    (Test / test) := (Test / test).dependsOn(compileAndPackage).value
 )
 
 /** Common default settings of the S2Js projects. */
@@ -109,7 +112,7 @@ lazy val s2JsCompilerProject = Project(
 ).settings(s2JsSettings)
 .settings(
     libraryDependencies ++= Seq(
-        "org.scala-lang" % "scala-compiler" % scalaVersion
+        "org.scala-lang" % "scala-compiler" % scalaVersionSetting
     ),
     testOptions ++= Seq(
         Tests.Argument("-Dwd=" + compilerTestsTarget.absolutePath),
@@ -118,7 +121,7 @@ lazy val s2JsCompilerProject = Project(
     cleanBeforeTests := {
         IO.delete(compilerTestsTarget)
     },
-    (test in Test) := (test in Test).dependsOn(cleanBeforeTests).value
+    (Test / test) := (Test / test).dependsOn(cleanBeforeTests).value
 ).dependsOn(
     s2JsAdaptersProject
 )
@@ -170,7 +173,6 @@ lazy val s2JsRuntimeClientProject = scalaToJsProjectRaw(
 lazy val scala2JsonProject = Project(
     "scala2json", file("scala2json")
 ).settings(payolaSettings)
-.enablePlugins(net.virtualvoid.sbt.graph.DependencyGraphPlugin)
 
 lazy val commonProject = scalaToJsProject(
     "common", "common", javaScriptsDir, payolaSettings
@@ -271,7 +273,7 @@ lazy val webServerProject = Project(
       javaHome := Some(file(System.getenv("JAVA_HOME"))),
       libraryDependencies ++= Seq(guice),
       compileAndPackage := {
-        val jarFile = (packageBin in Compile).value
+        val jarFile = (Compile / packageBin).value
         // Retrieve the dependencies.
         val dependencyExtensions = List("js", "css")
         val dependencyDirectory = new io.Directory(dependencyDir)
