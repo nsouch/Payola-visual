@@ -15,12 +15,13 @@ val cleanBeforeTests = TaskKey[Unit]("clean-before-tests", "Cleans the test targ
 
 /** Common settings of all projects. */
 val scalaVersionSetting = "2.12.20"
+val scalaBinaryVersion = "2.12"
 val libDir = file("lib")
 val targetDir = file("lib")
 
 /** Common settings of the S2Js projects. */
 val s2jsVersion = "0.2"
-val compilerJarName = s"compiler_${scalaVersionSetting}-${s2jsVersion}.jar"
+val compilerJarName = s"compiler_${scalaBinaryVersion}-${s2jsVersion}.jar"
 val compilerTestsTarget = file("s2js/compiler/target/tests")
 lazy val compilerTestsClassPath = {
     import java.io.{File => JFile}
