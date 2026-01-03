@@ -35,6 +35,18 @@ class Analysis(override val id: String, name: String, o: Option[User], var _isPu
     extends cz.payola.domain.entities.Analysis(name, o)
     with Entity with OptionallyOwnedEntity with ShareableEntity with DescribedEntity
 {
+    /** 20260103: Zero-arg constructor required by Squeryl for instantiation through reflection.
+        Important : If a class has an Option[] field, it becomes mandatory
+        to implement a zero argument constructor that initializes Option[] fields
+        with Some() instances (like the Book class in the example above).
+        Failing to do so will cause an exception to be thrown
+        when the table will be instantiated. The reason for this is that type erasures
+        imposed by the JVM prevents from reflecting on the Option[] type parameter.
+        This constraint could be relaxed in a future version by a compiler plugin
+        that would tell Squeryl the erased type information.
+      */
+    def this() = this("", "", None, false, "", None, false)(null)
+    
     type DomainParameterValueType = plugins.ParameterValue[_]
 
     _pluginInstances = null
@@ -53,7 +65,7 @@ class Analysis(override val id: String, name: String, o: Option[User], var _isPu
 
     token = _token
 
-    override def defaultOntologyCustomization_=(value: Option[Analysis#OntologyCustomizationType]) {
+    override def defaultOntologyCustomization_= (value: Option[Analysis#OntologyCustomizationType]) {
         defaultCustomizationId = value.map(_.id)
 
         // Save
