@@ -8,6 +8,15 @@ import play.Play.autoImport._
 import PayolaBuild._
 import scala.util.matching.Regex
 
+
+/** To enable source classifiers and download the sources of your binary dependencies.
+ * See https://scalacenter.github.io/bloop/docs/build-tools/sbt
+ * This option is required if you are using bloop with IDEs (e.g. Metals or IntelliJ) and
+ * expect navigation to binary dependencies to work. After the option has been enabled,
+ * the bloop configuration files of your projects should have one artifact per module with the "sources" classifier.
+*/
+bloopExportJarClassifiers in Global := Some(Set("sources"))
+
 /**
   * The Payola solution. All projects have to be listed in the aggregate method.
   */
