@@ -5,73 +5,59 @@ import scala.tools.nsc.io
 import sbt._
 import Keys._
 import scala.util.matching.Regex
+import com.typesafe.sbt.packager.Keys._
+import com.typesafe.sbt.SbtNativePackager.autoImport._
+
 
 val compileAndPackage = TaskKey[File]("compile-and-package", "Compiles and packages the project in one step.")
 
 val cleanBeforeTests = TaskKey[Unit]("clean-before-tests", "Cleans the test target directories.")
 
 /** Common settings of all projects. */
-object Settings
-{
-    val scalaVersion = "2.12.20"
-
-    val libDir = file("lib")
-
-    val targetDir = file("lib")
-}
+val scalaVersionSetting = "2.12.20"
+val libDir = file("lib")
+val targetDir = file("lib")
 
 /** Common settings of the S2Js projects. */
-object S2JsSettings
-{
-    val version = "0.2"
-
-    val compilerJarName = "compiler_%s-%s.jar".format(Settings.scalaVersion, version)
-
-    val compilerTestsTarget = file("s2js/compiler/target/tests")
-
-    val compilerTestsClassPath = List(Settings.libDir, Settings.targetDir).flatMap { dir =>
-        new io.Directory(dir).files.map(_.path)
+val s2jsVersion = "0.2"
+val compilerJarName = s"compiler_${scalaVersionSetting}-${s2jsVersion}.jar"
+val compilerTestsTarget = file("s2js/compiler/target/tests")
+lazy val compilerTestsClassPath = {
+    import java.io.{File => JFile}
+    List(libDir, targetDir).flatMap { dir =>
+        val files = Option(dir.listFiles()).getOrElse(Array.empty[JFile])
+        files.filter(_.isFile).map(_.getAbsolutePath)
     }.mkString(";")
 }
 
 /** Common settings of the Payola projects. */
-object PayolaSettings
-{
-    val version = "1.0"
-
-    val organization = "Payola"
-}
+val payolaVersion = "1.0"
+val payolaOrganization = "Payola"
 
 /** Settings of the web project. */
-object WebSettings
-{
-    val serverBaseDir = file("web/server")
-
-    val dependencyDir = serverBaseDir / "public"
-
-    val dependencyFile = dependencyDir / "dependencies"
-
-    val javaScriptsDir = dependencyDir / "javascripts"
-}
+val serverBaseDir = file("web/server")
+val dependencyDir = serverBaseDir / "public"
+val dependencyFile = dependencyDir / "dependencies"
+val javaScriptsDir = dependencyDir / "javascripts"
 
 /** Common default settings of all projects. */
-val defaultSettings = Defaults.defaultSettings ++ Seq(
+val defaultSettings = Seq(
     javaHome := Some(file(System.getenv("JAVA_HOME"))),
-    scalaVersion := Settings.scalaVersion,
+    scalaVersion := scalaVersionSetting,
     scalacOptions ++= Seq(
         "-deprecation",
         "-unchecked",
         "-encoding", "utf8"
     ),
     libraryDependencies ++= Seq(
-        "org.scalatest" %% "scalatest" % "1.9.2" % "test"
+        "org.scalatest" %% "scalatest" % "3.2.19" % "test"
     ),
     resolvers ++= Seq(
         DefaultMavenRepository
     ),
     compileAndPackage := {
         val jarFile = (packageBin in Compile).value
-        IO.copyFile(jarFile, Settings.targetDir / jarFile.name)
+        IO.copyFile(jarFile, targetDir / jarFile.name)
         jarFile
     },
     (test in Test) := (test in Test).dependsOn(compileAndPackage).value
@@ -79,13 +65,13 @@ val defaultSettings = Defaults.defaultSettings ++ Seq(
 
 /** Common default settings of the S2Js projects. */
 val s2JsSettings = defaultSettings ++ Seq(
-    version := S2JsSettings.version
+    version := s2jsVersion
 )
 
 /** Common settings of the Payola projects. */
 val payolaSettings = defaultSettings ++ Seq(
-    version := PayolaSettings.version,
-    organization := PayolaSettings.organization
+    version := payolaVersion,
+    organization := payolaOrganization
 )
 
 /**
@@ -100,143 +86,144 @@ lazy val payolaProject = Project(
     )
 
 lazy val s2JsProject = Project(
-    "s2js", file("s2js"), settings = s2JsSettings
-).aggregate(
+    "s2js", file("s2js")
+).settings(s2JsSettings)
+.aggregate(
     s2JsAdaptersProject, s2JsCompilerProject, s2JsRuntimeProject
 )
 
 lazy val s2JsAdaptersProject = Project(
-    "adapters", file("s2js/adapters"), settings = s2JsSettings
-)
+    "adapters", file("s2js/adapters")
+).settings(s2JsSettings)
 
 lazy val s2JsCompilerProject = Project(
-    "compiler", file("s2js/compiler"),
-    settings = s2JsSettings ++ Seq(
-        libraryDependencies ++= Seq(
-            "org.scala-lang" % "scala-compiler" % Settings.scalaVersion
-        ),
-        testOptions ++= Seq(
-            Tests.Argument("-Dwd=" + S2JsSettings.compilerTestsTarget.absolutePath),
-            Tests.Argument("-Dcp=" + S2JsSettings.compilerTestsClassPath)
-        ),
-        cleanBeforeTests := {
-            new io.Directory(S2JsSettings.compilerTestsTarget).deleteRecursively()
-        },
-        (test in Test) := (test in Test).dependsOn(cleanBeforeTests).value
-    )
+    "compiler", file("s2js/compiler")
+).settings(s2JsSettings)
+.settings(
+    libraryDependencies ++= Seq(
+        "org.scala-lang" % "scala-compiler" % scalaVersionSetting
+    ),
+    testOptions ++= Seq(
+        Tests.Argument("-Dwd=" + compilerTestsTarget.absolutePath),
+        Tests.Argument("-Dcp=" + compilerTestsClassPath)
+    ),
+    cleanBeforeTests := {
+        IO.delete(compilerTestsTarget)
+    },
+    (test in Test) := (test in Test).dependsOn(cleanBeforeTests).value
 ).dependsOn(
     s2JsAdaptersProject
 )
 
 /** A project that is compiled to JavaScript using Scala to JavaScript compiler (beside standard compilation). */
-object ScalaToJsProject
-{
-    val compilerJar = Settings.targetDir / S2JsSettings.compilerJarName
+val compilerJar = targetDir / compilerJarName
 
-    def apply(name: String, path: String, outputDir: File, settings: Seq[Def.Setting[_]]) = {
-        raw(name, path, outputDir, settings).dependsOn(
-            s2JsRuntimeClientProject
-        )
-    }
+def scalaToJsProjectRaw(name: String, path: String, outputDir: File, projectSettings: Seq[Def.Setting[_]], adapters: Project, compiler: Project): Project = {
+    Project(
+        name, file(path)
+    ).settings(projectSettings)
+    .settings(
+        scalacOptions ++= Seq(
+            "-Xplugin:" + compilerJar.absolutePath,
+            "-P:s2js:outputDirectory:" + (outputDir / path).absolutePath
+        ),
+        clean := {
+            // Utilisation de l'API sbt IO plutôt que scala.reflect.io
+            IO.delete(outputDir / path)
+        }
+    ).dependsOn(
+        adapters, compiler
+    )
+}
 
-    def raw(name: String, path: String, outputDir: File, projectSettings: Seq[Def.Setting[_]]) = {
-        Project(
-            name, file(path),
-            settings = projectSettings ++ Seq(
-                scalacOptions ++= Seq(
-                    "-Xplugin:" + compilerJar.absolutePath,
-                    "-P:s2js:outputDirectory:" + (outputDir / path).absolutePath
-                ),
-                clean := {
-                    // Utilisation de l'API sbt IO plutôt que scala.reflect.io
-                    IO.delete(outputDir / path)
-                }
-            )
-        ).dependsOn(
-            s2JsAdaptersProject, s2JsCompilerProject
-        )
-    }
+def scalaToJsProject(name: String, path: String, outputDir: File, settings: Seq[Def.Setting[_]]): Project = {
+    scalaToJsProjectRaw(name, path, outputDir, settings, s2JsAdaptersProject, s2JsCompilerProject).dependsOn(
+        s2JsRuntimeClientProject
+    )
 }
 
 lazy val s2JsRuntimeProject = Project(
-    "runtime", file("s2js/runtime"), settings = s2JsSettings
-).aggregate(
+    "runtime", file("s2js/runtime")
+).settings(s2JsSettings)
+.aggregate(
     s2JsRuntimeSharedProject, s2JsRuntimeClientProject
 )
 
-lazy val s2JsRuntimeSharedProject = ScalaToJsProject.raw(
-    "runtime-shared", "s2js/runtime/shared", WebSettings.javaScriptsDir, s2JsSettings
+lazy val s2JsRuntimeSharedProject = scalaToJsProjectRaw(
+    "runtime-shared", "s2js/runtime/shared", javaScriptsDir, s2JsSettings, s2JsAdaptersProject, s2JsCompilerProject
 )
 
-lazy val s2JsRuntimeClientProject = ScalaToJsProject.raw(
-    "runtime-client", "s2js/runtime/client", WebSettings.javaScriptsDir, s2JsSettings
+lazy val s2JsRuntimeClientProject = scalaToJsProjectRaw(
+    "runtime-client", "s2js/runtime/client", javaScriptsDir, s2JsSettings, s2JsAdaptersProject, s2JsCompilerProject
 ).dependsOn(
     s2JsRuntimeSharedProject
 )
 
 lazy val scala2JsonProject = Project(
-    "scala2json", file("scala2json"), settings = payolaSettings
-).settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*)
+    "scala2json", file("scala2json")
+).settings(payolaSettings)
+.enablePlugins(net.virtualvoid.sbt.graph.DependencyGraphPlugin)
 
-lazy val commonProject = ScalaToJsProject(
-    "common", "common", WebSettings.javaScriptsDir, payolaSettings
+lazy val commonProject = scalaToJsProject(
+    "common", "common", javaScriptsDir, payolaSettings
 ).dependsOn(scala2JsonProject)
 
 lazy val domainProject = Project(
-    "domain", file("domain"),
-    settings = payolaSettings ++ Seq(
-        libraryDependencies ++= Seq(
-            "org.apache.jena" % "jena-core" % "2.11.1",
-            "org.apache.jena" % "jena-arq" % "2.11.1",
-            "org.apache.jena" % "jena" % "2.11.0",
-            "org.apache.httpcomponents" % "httpclient" % "4.2.4",
-            "commons-io" % "commons-io" % "2.4",
-            "commons-lang" % "commons-lang" % "2.4"
-        )
+    "domain", file("domain")
+).settings(payolaSettings)
+.settings(
+    libraryDependencies ++= Seq(
+        "org.apache.jena" % "jena-core" % "2.11.1",
+        "org.apache.jena" % "jena-arq" % "2.11.1",
+        "org.apache.jena" % "jena" % "2.11.0",
+        "org.apache.httpcomponents" % "httpclient" % "4.2.4",
+        "commons-io" % "commons-io" % "2.4",
+        "commons-lang" % "commons-lang" % "2.4"
     )
 ).dependsOn(
     commonProject
 )
 
 lazy val dataProject = Project(
-    "data", file("data"),
-    settings = payolaSettings ++ Seq(
-        libraryDependencies ++= Seq(
-            "org.squeryl" %% "squeryl" % "0.9.5-7",
-            "com.h2database" % "h2" % "1.3.165",
-            "mysql" % "mysql-connector-java" % "5.1.18",
-            "postgresql" % "postgresql" % "9.1-901.jdbc4",
-            "org.apache.derby" % "derby" % "10.8.2.2",
-            "org.scalaj" %% "scalaj-http" % "0.3.16"
-        )
+    "data", file("data")
+).settings(payolaSettings)
+.settings(
+    libraryDependencies ++= Seq(
+        "org.squeryl" %% "squeryl" % "0.9.5-7",
+        "com.h2database" % "h2" % "1.4.200",
+        "mysql" % "mysql-connector-java" % "8.0.33",
+        "org.postgresql" % "postgresql" % "42.7.4",
+        "org.apache.derby" % "derby" % "10.14.2.0",
+        "org.scalaj" %% "scalaj-http" % "2.4.2"
     )
 ).dependsOn(
     commonProject, domainProject
 )
 
 lazy val modelProject = Project(
-    "model", file("model"),
-    settings = payolaSettings ++ Seq(
-        libraryDependencies ++= Seq(
-            "org.apache.commons" % "commons-lang3" % "3.1",
-            "com.fasterxml.jackson.core" % "jackson-core" % "2.3.0-rc1",
-            "com.fasterxml.jackson.core" % "jackson-databind" % "2.3.0-rc1",
-            "com.fasterxml.jackson.core" % "jackson-annotations" % "2.3.0-rc1"
-        )
+    "model", file("model")
+).settings(payolaSettings)
+.settings(
+    libraryDependencies ++= Seq(
+        "org.apache.commons" % "commons-lang3" % "3.1",
+        "com.fasterxml.jackson.core" % "jackson-core" % "2.3.0-rc1",
+        "com.fasterxml.jackson.core" % "jackson-databind" % "2.3.0-rc1",
+        "com.fasterxml.jackson.core" % "jackson-annotations" % "2.3.0-rc1"
     )
 ).dependsOn(
     commonProject, domainProject, dataProject
 )
 
 lazy val webProject = Project(
-    "web", file("web"), settings = payolaSettings
-).aggregate(
+    "web", file("web")
+).settings(payolaSettings)
+.aggregate(
     webSharedProject, webClientProject, webInitializerProject, webServerProject
 )
 
-lazy val webSharedProject = ScalaToJsProject(
-    "shared", "web/shared", WebSettings.javaScriptsDir,
-    settings = payolaSettings ++ Seq(
+lazy val webSharedProject = scalaToJsProject(
+    "shared", "web/shared", javaScriptsDir,
+    payolaSettings ++ Seq(
         libraryDependencies ++= Seq(
             "com.typesafe" % "config" % "0.5.0",
             "org.apache.commons" % "commons-email" % "1.2"
@@ -246,36 +233,38 @@ lazy val webSharedProject = ScalaToJsProject(
     commonProject, modelProject
 )
 
-lazy val webClientProject = ScalaToJsProject(
-    "client", "web/client", WebSettings.javaScriptsDir, payolaSettings
+lazy val webClientProject = scalaToJsProject(
+    "client", "web/client", javaScriptsDir, payolaSettings
 ).dependsOn(
     commonProject, webSharedProject
 )
 
 lazy val webInitializerProject = Project(
-    "initializer", file("web/initializer"), settings = payolaSettings
-).dependsOn(
+    "initializer", file("web/initializer")
+).settings(payolaSettings)
+.dependsOn(
     domainProject, dataProject, webSharedProject
 )
 
 lazy val webRunnerProject = Project(
-    "runner", file("web/runner"), settings = payolaSettings
-).dependsOn(
+    "runner", file("web/runner")
+).settings(payolaSettings)
+.dependsOn(
     webSharedProject
 )
 
 lazy val webServerProject = Project(
       "server", file("web/server")
-    ).enablePlugins(play.PlayScala)
+    ).enablePlugins(PlayScala)
     .settings(
-      version := PayolaSettings.version,
+      version := payolaVersion,
       javaHome := Some(file(System.getenv("JAVA_HOME"))),
       libraryDependencies ++= Seq(guice),
       compileAndPackage := {
         val jarFile = (packageBin in Compile).value
         // Retrieve the dependencies.
         val dependencyExtensions = List("js", "css")
-        val dependencyDirectory = new io.Directory(WebSettings.dependencyDir)
+        val dependencyDirectory = new io.Directory(dependencyDir)
         val files = dependencyDirectory.deepFiles.filter(f => dependencyExtensions.contains(f.extension))
             .filterNot(f => f.path.contains("javascripts/lib"))
 
@@ -319,7 +308,7 @@ lazy val webServerProject = Project(
         }
 
         // Create the dependency file.
-        val dependencyFile = WebSettings.dependencyFile
+        val depFile = dependencyFile
         val dependencyBuffer = ListBuffer.empty[String]
         fileProvides.keys.foreach{file =>
             dependencyBuffer += "'%s': [".format(file)
@@ -331,14 +320,14 @@ lazy val webServerProject = Project(
             dependencyBuffer += "]\n"
         }
 
-        new io.File(dependencyFile).writeAll(dependencyBuffer.mkString)
+        new io.File(depFile).writeAll(dependencyBuffer.mkString)
 
         jarFile
       },
       clean := {
           val c = clean.value
               // Delete the dependency file.
-              new io.File(WebSettings.dependencyFile).delete()
+              new io.File(dependencyFile).delete()
               c
       }
 ).dependsOn(
