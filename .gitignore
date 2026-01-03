@@ -1,4 +1,8 @@
 .metals/
+metals.sbt
+.bloop/
+.idea/
+.bsp/
 .vscode/
 **/target/
 **/target-jvm/
