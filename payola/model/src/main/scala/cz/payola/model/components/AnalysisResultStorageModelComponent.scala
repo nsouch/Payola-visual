@@ -6,7 +6,6 @@ import cz.payola.domain.entities.AnalysisResult
 import cz.payola.data.DataContextComponent
 import cz.payola.domain.entities.plugins.concrete.data.PayolaStorage
 import java.io._
-import scala.actors.Futures._
 
 import com.hp.hpl.jena.query._
 import com.hp.hpl.jena.rdf.model._

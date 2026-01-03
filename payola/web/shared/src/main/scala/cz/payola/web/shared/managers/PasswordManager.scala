@@ -4,33 +4,26 @@ import scala.collection.mutable
 import cz.payola.common.entities.User
 import cz.payola.web.shared._
 import cz.payola.common.PayolaException
-import scala.actors._
 import cz.payola.web.shared.Email
 import s2js.compiler.remote
+import scala.concurrent.duration._
+import scala.concurrent.ExecutionContext.Implicits.global 
+import akka.actor.ActorSystem
 
 @remote
 object PasswordManager
 {
+    // On a besoin d'un ActorSystem pour le scheduler
+    // Dans Play 2.6, il est préférable de l'injecter, mais pour un objet singleton :
+    private val system = ActorSystem("PasswordRecoverySystem")
 
-    // UUID -> (email, new password)
     lazy private val recoveryHashMap: mutable.HashMap[String, (String, String)] = new mutable.HashMap[String, (String, String)]()
-
-    class HashMapCleaner(val timeout: Long, val uuid: String) extends Actor {
-        def act() {
-            reactWithin(timeout) {
-                case TIMEOUT => {
-                    recoveryHashMap.remove(uuid)
-                }
-            }
-        }
-    }
 
     @remote def sendRecoveryEmailToUser(uuid: String, user: User, newPassword: String) {
         recoveryHashMap.put(uuid, (user.id, newPassword))
-
-        // Remove the UUID from the hash map after 2 hours
-        val t = new HashMapCleaner(7200000, uuid)
-        t.start()
+        system.scheduler.scheduleOnce(2.hours) {
+            recoveryHashMap.remove(uuid)
+        }
 
         val content =
             """
