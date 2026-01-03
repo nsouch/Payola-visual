@@ -386,6 +386,7 @@ abstract class ClassDefCompiler(val packageDefCompiler: PackageDefCompiler, val 
                 case identifier: Global#Ident => compileIdentifier(identifier)
                 case valDef: Global#ValDef if valDef.symbol.isLocal => compileLocalValDef(valDef)
                 case _: Global#TypeDef => // NOOP
+                case _: Global#ClassDef => // Skip synthetic class definitions (e.g., anonymous PartialFunction classes in Scala 2.12)
                 case function: Global#Function => compileAnonymousFunction(function)
                 case constructorCall: Global#New => compileNew(constructorCall)
                 case select: Global#Select => compileSelect(select)
@@ -579,6 +580,10 @@ abstract class ClassDefCompiler(val packageDefCompiler: PackageDefCompiler, val 
      */
     private def compileApply(apply: Global#Apply) {
         apply match {
+            case apply@Apply(fun, args) if fun.symbol != null && fun.symbol.isLabel =>
+                buffer += s"${fun.symbol.name.toString}("
+                compileParameterValues(args, withParentheses = false)
+                buffer += ")"
             case Apply(s@Select(q, name), args) if symbolIsOperator(s.symbol) => {
                 compileOperator(q, Some(args.head), name.toString)
             }
@@ -809,26 +814,23 @@ abstract class ClassDefCompiler(val packageDefCompiler: PackageDefCompiler, val 
      * @param labelDef The LabelDef to compile.
      */
     private def compileLabelDef(labelDef: Global#LabelDef) {
-        labelDef.name match {
-            case name if name.toString.startsWith("while$") => {
-                // A while cycle is transformed into a tail recursive function with AST similar to:
-                //     def while$1() {
-                //         if([while-condition]) {
-                //            [while-body]
-                //            while$1()
-                //         }
-                //     }
-                val If(cond, Block(body, _), _) = labelDef.rhs
-                buffer += "while("
-                compileAst(cond)
-                buffer += ") {\n"
-                compileAstStatement(body.head)
-                buffer += "}"
-            }
-            case _ => {
-                throw new ScalaToJsException("Unsupported LabelDef: " + labelDef.toString)
-            }
-        }
+        val name = labelDef.name.toString
+        // Define a named function in JavaScript
+        buffer += s"var $name = function("
+        // Add parameters (important for tail recursion in Scala 2.12)
+        buffer += labelDef.params.map(p => packageDefCompiler.getSymbolLocalJsName(p.symbol)).mkString(", ")
+        buffer += ") {\n"
+
+        // Compile the body of the label
+        compileAst(labelDef.rhs)
+
+        buffer += "\n};\n"
+
+        // Immediately invoke the function to start execution
+        buffer += s"$name("
+        // If it's a standard while loop, the arguments are empty
+        buffer += labelDef.params.map(_ => "undefined").mkString(", ") 
+        buffer += ")"
     }
 
     /**
