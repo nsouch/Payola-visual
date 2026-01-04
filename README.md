@@ -30,6 +30,27 @@ If you are a developer, you can also contribute with your own analytical plugin 
 - Public website with community around a specific type of RDF data.
 - Company/government website to present RDF data to the public.
 
+## Testing
+
+The project includes a comprehensive test suite. To verify that your development environment is properly configured and that the debugger works correctly, you can run the sanity test:
+
+```
+> project domain
+> testOnly cz.payola.domain.test.SanityTest
+```
+
+This basic test suite (`SanityTest.scala`) includes 8 simple tests covering fundamental Scala operations. It's particularly useful for:
+- Verifying that ScalaTest 3.x is properly configured
+- Testing debugger functionality by setting breakpoints
+- Ensuring the test infrastructure is working before running the full test suite
+
+To run all domain tests:
+
+```
+> project domain
+> test
+```
+
 ## Setting up
 
 Prerequisities of the Payola are installed and running local Virtuoso server and H2 database. The following text assumes, that both are installed with default settings. It's just a head start, for complete description of installation and configuration, see the [Installation Guide](https://github.com/kudlondr/Payola-visual/blob/master/docs/installation_guide.md).
