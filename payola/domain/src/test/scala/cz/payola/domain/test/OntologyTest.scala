@@ -90,7 +90,7 @@ class OntologyTest extends AnyFlatSpec with Matchers
           |    </rdf:Description>
           |</rdf:RDF>""".stripMargin
 
-    val publicDataOntologyUrl = "http://opendata.cz/pco/public-contracts.xml"
+    val publicDataOntologyUrl = "https://raw.githubusercontent.com/opendatacz/public-contracts-ontology/master/public-contracts.rdf"
 
     "Ontology" should "be created from a sample OWL document" in {
         val ontology = Ontology(sampleOWL)

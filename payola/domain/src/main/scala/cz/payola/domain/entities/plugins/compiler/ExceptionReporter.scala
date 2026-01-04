@@ -2,6 +2,7 @@ package cz.payola.domain.entities.plugins.compiler
 
 import scala.tools.nsc.reporters.Reporter
 import scala.tools.nsc.util._
+import scala.reflect.internal.util.{Position, NoPosition}
 
 /**
   * A compiler error reporter that reports errors by throwing exceptions instead of writing it to the standard output.
@@ -13,6 +14,7 @@ class ExceptionReporter extends Reporter
             val severityDescription = severity match {
                 case WARNING => "Warning"
                 case ERROR => "Error"
+                case _ => "Undefined severity"
             }
             val position = pos match {
                 case NoPosition => ""

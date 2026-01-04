@@ -17,7 +17,7 @@ class AnalysisEvaluationSpec extends AnyFlatSpec with Matchers
 
         val analysis = new Analysis("Cities with more than 2 million habitants", None)
         val citiesFetcher = sparqlEndpointPlugin.createInstance()
-            .setParameter(SparqlEndpointFetcher.endpointURLParameter, "http://dbpedia.org/sparql")
+            .setParameter(SparqlEndpointFetcher.endpointURLParameter, "https://dbpedia.org/sparql")
         val citiesTyped = typedPlugin.createInstance().setParameter(Typed.typeURIParameter,
             "http://dbpedia.org/ontology/City")
         val citiesPropertySelection = propertySelectionPlugin.createInstance().setParameter(

@@ -57,7 +57,7 @@ class Downloader(val url: String, val accept: String = "", val encoding: String 
     }
 
     def getResult : Option[String] = {
-        val connection = new java.net.URL(url).openConnection()
+        val connection = new java.net.URI(url).toURL.openConnection()
         connection.setRequestProperty("Accept", accept)
 
         val inputStream = connection.getInputStream

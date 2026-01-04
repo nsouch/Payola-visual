@@ -9,40 +9,19 @@ class PluginCompilerSpec extends AnyFlatSpec with Matchers
 {
     val libDirectory = new java.io.File("lib")
 
-    val pluginClassDirectory = new java.io.File("domain/target/scala-2.9.1/test-classes")
+    val scalaVersion = scala.util.Properties.versionNumberString
+    val scalaBinaryVersion = scalaVersion.split('.').take(2).mkString(".")
+    val pluginClassDirectory = new java.io.File(s"domain/target/scala-$scalaBinaryVersion/test-classes")
 
     val compiler = new PluginCompiler(libDirectory, pluginClassDirectory)
 
     val loader = new PluginClassLoader(pluginClassDirectory, getClass.getClassLoader)
 
     "Plugin compiler" should "compile simple plugins" in {
-        val pluginInfo = compiler.compile(
-            """
-                package my.custom.plugin
-
-                import scala.collection._
-                import cz.payola.domain._
-                import cz.payola.domain.entities._
-                import cz.payola.domain.entities.plugins._
-                import cz.payola.domain.entities.plugins.parameters._
-                import cz.payola.domain.rdf._
-
-                class DelayInSeconds(name: String, inputCount: Int, parameters: immutable.Seq[Parameter[_]], id: String)
-                    extends Plugin(name, inputCount, parameters, id)
-                {
-                    def this() = this("Time Delay in seconds", 1, List(new IntParameter("Delay", 1)), IDGenerator.newId)
-
-                    def evaluate(instance: PluginInstance, inputs: IndexedSeq[Option[Graph]], progressReporter: Double => Unit) = {
-                        usingDefined(instance.getIntParameter("Delay")) { d =>
-                            (1 to d).foreach { i =>
-                                Thread.sleep(1000)
-                                progressReporter(i.toDouble / d)
-                            }
-                            inputs(0).getOrElse(Graph.empty)
-                        }
-                    }
-                }
-            """)
+        /** Reading the source code from file and compiling it ensures that the code is valid Scala code.
+          */
+        val sourceCode = scala.io.Source.fromFile("domain/src/test/scala/cz/payola/domain/test/MyCustomPlugin.scala").mkString
+        val pluginInfo = compiler.compile(sourceCode)
 
         val plugin = loader.instantiatePlugin(pluginInfo.className)
         assert(pluginInfo.name == "Time Delay in seconds", "The plugin name is invalid.")

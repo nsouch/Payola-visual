@@ -13,11 +13,42 @@ import scala.tools.nsc.reporters._
   */
 class PluginCompiler(val libDirectory: java.io.File, val pluginClassDirectory: java.io.File)
 {
-    private val classpath = new Directory(libDirectory).files.map(_.path).mkString(java.io.File.pathSeparator)
+    private def buildClasspath(): String = {
+        // 1. Get libraries from lib directory
+        val libJars = new Directory(libDirectory).files
+            .map(_.path)
+            .toSeq
+        
+        // 2. Get Scala standard libraries (scala-library, scala-reflect, scala-compiler)
+        val scalaLibraries = Seq(
+            classOf[List[_]],           // scala-library
+            classOf[scala.reflect.api.TypeCreator], // scala-reflect
+            classOf[Global]              // scala-compiler
+        ).map { clazz =>
+            val location = clazz.getProtectionDomain.getCodeSource.getLocation
+            new java.io.File(location.toURI).getAbsolutePath
+        }
+        
+        // 3. Get current runtime classpath (includes already compiled domain classes)
+        val runtimeClasspath = System.getProperty("java.class.path")
+            .split(java.io.File.pathSeparator)
+            .toSeq
+        
+        // 4. Combine all classpaths and remove duplicates
+        (libJars ++ scalaLibraries ++ runtimeClasspath)
+            .distinct
+            .mkString(java.io.File.pathSeparator)
+    }
 
     private val settings = new Settings()
-    settings.classpath.value = classpath
+    settings.classpath.value = buildClasspath()
     settings.outdir.value = pluginClassDirectory.getAbsolutePath
+    // Disable warnings for better compatibility with Java 11+
+    settings.nowarn.value = true
+    // Enable better error messages
+    settings.deprecation.value = false
+    settings.feature.value = false
+    // Do NOT use usejavacp - it causes classfile parsing conflicts
 
     private val compiler = new InternalCompiler(settings, new ExceptionReporter)
 

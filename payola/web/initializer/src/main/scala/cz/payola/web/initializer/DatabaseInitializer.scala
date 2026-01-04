@@ -112,7 +112,7 @@ object DatabaseInitializer extends App
             DataSource("DBpedia.org", Some(admin), sparqlEndpointPlugin.createInstance().setParameter(
                 SparqlEndpointFetcher.endpointURLParameter, "http://dbpedia.org/sparql")),
             DataSource("Opendata.cz", Some(admin), sparqlEndpointPlugin.createInstance().setParameter(
-                SparqlEndpointFetcher.endpointURLParameter, "http://ld.opendata.cz:8894/sparql"))
+                SparqlEndpointFetcher.endpointURLParameter, "https://data.gov.cz/sparql"))
         ).foreach { d =>
             d.isPublic = true
             model.dataSourceRepository.persist(d)
@@ -167,7 +167,7 @@ object DatabaseInitializer extends App
         val expensiveContractsPersisted = model.analysisRepository.persist(expensiveContracts)
 
         val expensiveContractsFetcher = sparqlEndpointPlugin.createInstance().setParameter(
-            SparqlEndpointFetcher.endpointURLParameter, "http://ld.opendata.cz:8894/sparql")
+            SparqlEndpointFetcher.endpointURLParameter, "https://data.gov.cz/sparql")
         val expensiveContractsQuery = concreteSparqlQueryPlugin.createInstance().setParameter(
             ConcreteSparqlQuery.queryParameter,
             """
@@ -191,7 +191,7 @@ object DatabaseInitializer extends App
         val manyTendersPersisted = model.analysisRepository.persist(manyTenders)
 
         val contractFetcher = sparqlEndpointPlugin.createInstance().setParameter(
-            SparqlEndpointFetcher.endpointURLParameter, "http://ld.opendata.cz:8894/sparql")
+            SparqlEndpointFetcher.endpointURLParameter, "https://data.gov.cz/sparql")
         val contractTyped = typedPlugin.createInstance().setParameter(
             Typed.typeURIParameter, "http://purl.org/procurement/public-contracts#Contract")
         val contractFilter = filterPlugin.createInstance().setParameter(
