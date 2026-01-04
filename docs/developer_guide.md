@@ -1116,7 +1116,7 @@ To run all tests, use the `test` SBT task on the root project. Or if you want to
 
 ## API documentation
 
-The generated API documentation isn't included, however you can generate it using the SBT. To generate API documentation, use the `doc` SBT task on the root project. Each project has its own API documentation which can be found in the `target/scala-2.9.1/api` subdirectory of the project.
+The generated API documentation isn't included, however you can generate it using the SBT. To generate API documentation, use the `doc` SBT task on the root project. Each project has its own API documentation which can be found in the `target/scala-2.12/api` subdirectory of the project.
 
 ## Continuous integration
 In order to have the code in the repository compilable all the time, we use a [TeamCity](http://www.jetbrains.com/teamcity/) as continuous integration tool. Since the integration rules are currently set that the only rule is that the application should compile, only a simple build ant script is used.
