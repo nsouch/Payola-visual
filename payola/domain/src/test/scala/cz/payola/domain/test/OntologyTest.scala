@@ -1,12 +1,12 @@
 package cz.payola.domain.test
 
-import org.scalatest.matchers.ShouldMatchers
-import org.scalatest.FlatSpec
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import cz.payola.domain.rdf.ontology.Ontology
 import cz.payola.domain.net.Downloader
 import cz.payola.domain.entities.settings.OntologyCustomization
 
-class OntologyTest extends FlatSpec with ShouldMatchers
+class OntologyTest extends AnyFlatSpec with Matchers
 {
     val sampleOWL =
         """<?xml version="1.0" encoding="UTF-8"?>

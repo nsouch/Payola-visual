@@ -1,13 +1,13 @@
 package cz.payola.domain.test
 
-import org.scalatest.FlatSpec
-import org.scalatest.matchers.ShouldMatchers
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import cz.payola.common.rdf._
 import cz.payola.domain.rdf._
 import cz.payola.domain.rdf.PayolaGraph
 import cz.payola.common.rdf.LiteralVertex
 
-class GraphSpec extends FlatSpec with ShouldMatchers
+class GraphSpec extends AnyFlatSpec with Matchers
 {
     "Merged graph" should "contain all original vertices and edges with no duplicities" in {
         val g = graph1 + graph2
@@ -96,7 +96,7 @@ class GraphSpec extends FlatSpec with ShouldMatchers
         val e1 = new Edge(n1, n2, "Edge1")
         val e2 = new Edge(n1, n3, "Edge2")
 
-        new PayolaGraph(List(n1, n2, n3), List(e1, e2))
+        new PayolaGraph(List(n1, n2, n3), List(e1, e2), None)
     }
 
     private def graph2: PayolaGraph = {
@@ -109,6 +109,6 @@ class GraphSpec extends FlatSpec with ShouldMatchers
         val e2 = new Edge(n1, n3, "EdgeY")
         val e3 = new Edge(n1, n4, "Edge1")
 
-        new PayolaGraph(List(n1, n2, n3, n4), List(e1, e2, e3))
+        new PayolaGraph(List(n1, n2, n3, n4), List(e1, e2, e3), None)
     }
 }

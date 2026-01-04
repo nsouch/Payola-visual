@@ -1,19 +1,19 @@
 package cz.payola.domain.test
 
-import org.scalatest.FlatSpec
-import org.scalatest.matchers.ShouldMatchers
-import cz.payola.domain.rdf.PayolaGraph
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
+import cz.payola.domain.rdf.{PayolaGraph, Graph}
 import cz.payola.domain.entities.Plugin
 import cz.payola.domain.entities.plugins.PluginInstance
 import cz.payola.domain.entities.plugins.parameters._
 
 class PseudoPlugin(name: String) extends Plugin(name, 1, List(new StringParameter("Time", ""))) {
-    def evaluate(instance: PluginInstance, inputs: IndexedSeq[Option[PayolaGraph]], progressReporter: Double => Unit) = {
+    def evaluate(instance: PluginInstance, inputs: IndexedSeq[Option[Graph]], progressReporter: Double => Unit) = {
         PayolaGraph.empty
     }
 }
 
-class PluginInstanceTest extends FlatSpec with ShouldMatchers {
+class PluginInstanceTest extends AnyFlatSpec with Matchers {
 //    "PluginInstance" should "not get initialized with null plugin" in {
 //        evaluating(new PluginInstance(_plugin = null)) should produce [IllegalArgumentException]
 //    }
@@ -32,7 +32,9 @@ class PluginInstanceTest extends FlatSpec with ShouldMatchers {
 
 
         val spv = new StringParameterValue(p.getParameter("Time").get.asInstanceOf[StringParameter], "")
-        evaluating(pl.setParameter(spv, "00:00:00")) should produce[IllegalArgumentException]
+        assertThrows[IllegalArgumentException] {
+            pl.setParameter(spv, "00:00:00")
+        }
 
         pl.setParameter("Time", "00:00:00")
         assume(pl.getParameter("Time").isDefined)

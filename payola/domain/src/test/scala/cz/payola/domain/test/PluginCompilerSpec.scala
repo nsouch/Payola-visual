@@ -1,11 +1,11 @@
 package cz.payola.domain.test
 
-import org.scalatest.FlatSpec
-import org.scalatest.matchers.ShouldMatchers
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import cz.payola.domain.entities.plugins.compiler._
 import cz.payola.domain.entities.plugins.PluginClassLoader
 
-class PluginCompilerSpec extends FlatSpec with ShouldMatchers
+class PluginCompilerSpec extends AnyFlatSpec with Matchers
 {
     val libDirectory = new java.io.File("lib")
 
@@ -63,7 +63,7 @@ class PluginCompilerSpec extends FlatSpec with ShouldMatchers
             fail("The PluginCompilationException wasn't thrown.")
         } catch {
             case _: PluginCompilationException => // NOOP
-            case _ => fail("The PluginCompilationException wasn't thrown.")
+            case _: Throwable => fail("The PluginCompilationException wasn't thrown.")
         }
     }
 }

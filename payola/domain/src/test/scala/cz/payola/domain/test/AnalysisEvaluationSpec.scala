@@ -1,14 +1,13 @@
 package cz.payola.domain.test
 
-import org.scalatest.FlatSpec
-
-import org.scalatest.matchers.ShouldMatchers
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import cz.payola.domain.entities.plugins.concrete.data.SparqlEndpointFetcher
 import cz.payola.domain.entities.plugins.concrete.query._
 import cz.payola.domain.entities.analyses.evaluation.Success
 import cz.payola.domain.entities.Analysis
 
-class AnalysisEvaluationSpec extends FlatSpec with ShouldMatchers
+class AnalysisEvaluationSpec extends AnyFlatSpec with Matchers
 {
     "Analysis evaluation" should "work" in {
         val sparqlEndpointPlugin = new SparqlEndpointFetcher

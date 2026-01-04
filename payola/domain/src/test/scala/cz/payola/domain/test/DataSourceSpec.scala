@@ -1,12 +1,12 @@
 package cz.payola.domain.test
 
-import org.scalatest.FlatSpec
-import org.scalatest.matchers.ShouldMatchers
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import cz.payola.common.rdf.IdentifiedVertex
 import cz.payola.domain.entities.plugins.DataSource
 import cz.payola.domain.entities.plugins.concrete.data.SparqlEndpointFetcher
 
-class DataSourceSpec extends FlatSpec with ShouldMatchers
+class DataSourceSpec extends AnyFlatSpec with Matchers
 {
     val instance = (new SparqlEndpointFetcher).createInstance().setParameter(SparqlEndpointFetcher.endpointURLParameter, "http://ld.opendata.cz:8894/sparql")
 
