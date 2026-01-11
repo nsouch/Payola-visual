@@ -32,7 +32,7 @@ class ScalaToJsPlugin(val global: Global) extends Plugin
         val global = ScalaToJsPlugin.this.global
 
         /** List of phase names, this phase should run after.  */
-        val runsAfter = List[String]("refchecks")
+        val runsAfter = List[String]("uncurry")
 
         /** The name of the phase. */
         val phaseName = "s2js-phase"
@@ -45,36 +45,41 @@ class ScalaToJsPlugin(val global: Global) extends Plugin
               * @param unit The CompilationUnit to execute the phase on.
               */
             def apply(unit: global.CompilationUnit) {
-                try {
-                    if (unit.body.isInstanceOf[Global#PackageDef]) {
-                        val packageDef = unit.body.asInstanceOf[Global#PackageDef]
-                        val packageName = packageDef.symbol.fullName
-                        val packagePath = if (createPackageStructure) packageName.replace('.', '/') else "."
-                        val fileName = unit.source.file.name.replace(".scala", ".js")
-                        val outputFile = new File(outputDirectory.getAbsolutePath + "/" + packagePath + "/" + fileName)
-                        outputFile.getParentFile.mkdirs()
-
-                        try {
-                            val compiler = new PackageDefCompiler(global, unit.source.file, packageDef)
-                            io.File(outputFile).writeAll(compiler.compile())
-                        } catch {
-                            case e: Exception => {
-                                println(e)
-                                throw e
-                            }
-                        }
-
-                    } else {
-                        throw new ScalaToJsException(
-                            "The %s source file must contain a package definition.".format(unit.source.file.name)
-                        )
-                    }
-                } catch {
-                    case e: ScalaToJsException => global.error(e.errorMsg)
-                }
-            }
+              // Utilisation du pattern matching direct sur l'instance concrète
+              unit.body match {
+                  case packageDef: global.PackageDef =>
+                      processPackage(unit, packageDef)
+                  
+                    // Safety: if the body is a typed tree but not a direct PackageDef
+                    case other =>
+                      // Sometimes after certain phases, the root may vary
+                      // You can try to find the PackageDef in the children if necessary
+                      global.inform(s"Skipping unit: ${unit.source.file.name} (Root is ${other.productPrefix})")
+              }
+          }
         }
 
+        /**
+         * Processes a PackageDef object.
+         * @param unit The compilation unit.
+         * @param packageDef The PackageDef to process.
+         */
+        private def processPackage(unit: global.CompilationUnit, packageDef: global.PackageDef) {
+            try {
+                val packageName = packageDef.symbol.fullName
+                val packagePath = if (createPackageStructure) packageName.replace('.', '/') else "."
+                val fileName = unit.source.file.name.replace(".scala", ".js")
+                val outputFile = new File(outputDirectory.getAbsolutePath + "/" + packagePath + "/" + fileName)
+                outputFile.getParentFile.mkdirs()
+
+                val compiler = new PackageDefCompiler(global, unit.source.file, packageDef)
+                io.File(outputFile).writeAll(compiler.compile())
+                
+            } catch {
+                case e: Exception => 
+                    global.globalError(s"Error in s2js-phase for ${unit.source.file.name}: ${e.getMessage}")
+            }
+        }
         /**
           * The phase factory.
           * @param prev The previous phase.
@@ -88,8 +93,10 @@ class ScalaToJsPlugin(val global: Global) extends Plugin
     /**
       * Handles all plugin-specific options.
       * @param options The options passed to the plugin.
+      * @param error The error handler.
+      * @return True if initialization was successful, false otherwise.
       */
-    override def processOptions(options: List[String], error: String => Unit) {
+    override def init(options: List[String], error: String => Unit): Boolean = {
         val optionsMap = new mutable.HashMap[String, String]
         options.foreach {option =>
             val index = option.indexOf(":")
@@ -106,5 +113,6 @@ class ScalaToJsPlugin(val global: Global) extends Plugin
         optionsMap.get("createPackageStructure").foreach { c =>
             createPackageStructure = c == "true"
         }
+        true
     }
 }

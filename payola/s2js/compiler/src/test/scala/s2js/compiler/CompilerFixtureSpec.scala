@@ -1,12 +1,13 @@
 package s2js.compiler
 
 import java.io.File
-import org.scalatest.BeforeAndAfterAll
-import org.scalatest.fixture.{ConfigMapFixture, FixtureSpec}
+import org.scalatest.BeforeAndAfterAllConfigMap
+import org.scalatest.funspec.FixtureAnyFunSpec
+import org.scalatest.fixture.ConfigMapFixture
 import scala.tools.nsc.io
 import scala.io.Source
 
-abstract class CompilerFixtureSpec extends FixtureSpec with ConfigMapFixture with BeforeAndAfterAll
+abstract class CompilerFixtureSpec extends FixtureAnyFunSpec with ConfigMapFixture with BeforeAndAfterAllConfigMap
 {
     var compiler: ScalaToJsCompiler = null
 
@@ -14,7 +15,7 @@ abstract class CompilerFixtureSpec extends FixtureSpec with ConfigMapFixture wit
 
     var testId = 0
 
-    override def beforeAll(configMap: Map[String, Any]) {
+    override def beforeAll(configMap: org.scalatest.ConfigMap) {
         val fixtureDirectoyrName = configMap("wd").toString + "/" + this.getClass.getName
         workingDirectory = new File(fixtureDirectoyrName)
         workingDirectory.mkdirs()

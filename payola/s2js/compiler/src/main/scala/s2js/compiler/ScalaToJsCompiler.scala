@@ -71,7 +71,7 @@ class ScalaToJsCompiler(
         override protected def computeInternalPhases() {
             super.computeInternalPhases()
             val scalaToJsPlugin = new ScalaToJsPlugin(this)
-            scalaToJsPlugin.processOptions(options, s => ())
+            scalaToJsPlugin.init(options, s => ())
             scalaToJsPlugin.components.foreach(phasesSet += _)
         }
     }
