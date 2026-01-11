@@ -76,7 +76,7 @@ class DependencyManager(private val packageDefCompiler: PackageDefCompiler)
      * Retrieves structure of the specified AST.
      * @param ast The AST whose structure should be retrieved.
      */
-    private def retrieveStructure(ast: Global#Tree) {
+    private[compiler] def retrieveStructure(ast: Global#Tree) {
         ast match {
             case packageDef: Global#PackageDef => packageDef.children.foreach(retrieveStructure)
             case classDef: Global#ClassDef => retrieveClassDefStructure(classDef)
