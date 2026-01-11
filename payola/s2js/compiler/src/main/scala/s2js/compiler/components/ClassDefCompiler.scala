@@ -384,7 +384,7 @@ abstract class ClassDefCompiler(val packageDefCompiler: PackageDefCompiler, val 
                 case Return(expr) => compileAst(expr)
                 case literal: Global#Literal => compileLiteral(literal, hasReturnValue)
                 case identifier: Global#Ident => compileIdentifier(identifier)
-                case valDef: Global#ValDef if valDef.symbol.isLocal => compileLocalValDef(valDef)
+                case valDef: Global#ValDef if valDef.symbol.isLocalToBlock => compileLocalValDef(valDef)
                 case _: Global#TypeDef => // NOOP
                 case _: Global#ClassDef => // Skip synthetic class definitions (e.g., anonymous PartialFunction classes in Scala 2.12)
                 case function: Global#Function => compileAnonymousFunction(function)
@@ -592,6 +592,9 @@ abstract class ClassDefCompiler(val packageDefCompiler: PackageDefCompiler, val 
             }
             case Apply(Select(s: Super, name), _) => {
                 compileSuperCall(apply, name.toString)
+            }
+            case Apply(select@Select(_, _), args) if select.symbol.isGetter => {
+                compileSelect(select, isInsideApply = false) 
             }
             case Apply(Select(qual, name), _)
                 if name.toString == "apply" && symbolIsCallable(qual.symbol.tpe.typeSymbol) => {
