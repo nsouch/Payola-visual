@@ -184,10 +184,36 @@ abstract class ClassDefCompiler(val packageDefCompiler: PackageDefCompiler, val 
      */
     protected def compileValDef(valDef: Global#ValDef, containerName: String = memberContainerName) {
         buffer += "%s.%s = ".format(containerName, packageDefCompiler.getSymbolLocalJsName(valDef.symbol))
-        compileSymbol(valDef.symbol) {
-            compileAst(valDef.rhs)
+        valDef.rhs match {
+            case block: Global#Block if isLambdaBlock(block) =>
+                val lambdaDef = block.stats.collectFirst { case defDef: Global#DefDef => defDef }.get
+                
+                compileFunction(lambdaDef.vparamss.flatten, false) {
+                    compileAstStatement(lambdaDef.rhs, !packageDefCompiler.typeIsEmpty(lambdaDef.tpt.tpe))
+                }
+            case _ =>
+                compileSymbol(valDef.symbol) {
+                    compileAst(valDef.rhs)
+                }
         }
         buffer += ";\n"
+    }
+
+    /**
+     * Checks whether the specified Block is a lambda block.
+     * @param block The Block to check.
+     * @return True if the Block is a lambda block, false otherwise.
+     */
+    private def isLambdaBlock(block: Global#Block): Boolean = {
+        /**
+         * This structure represents the compiler's internal representation of anonymous functions
+         * after lambda lifting transformation, where the anonymous function is converted into
+         * a named method (prefixed with $anonfun) followed by a Function node that references it.
+         */
+        block.stats.exists {
+            case defDef: Global#DefDef => defDef.name.toString.contains("$anonfun")
+            case _ => false
+        } && block.expr.isInstanceOf[Global#Function]
     }
 
     /**

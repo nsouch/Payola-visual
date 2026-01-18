@@ -70,7 +70,9 @@ class FunctionSpecs extends CompilerIndependentSpec
                 s2js.runtime.client.core.get().classLoader.provide('a');
                 s2js.runtime.client.core.get().mixIn(a, new s2js.runtime.client.core.Lazy(function() {
                     var obj = {};
-                    obj.x = function(y) { window.alert(y); };
+                    obj.x = function($y) {
+                    window.alert($y);
+                    };
                     obj.__class__ = new s2js.runtime.client.core.Class('a', []);
                     return obj;
                 }), true);
