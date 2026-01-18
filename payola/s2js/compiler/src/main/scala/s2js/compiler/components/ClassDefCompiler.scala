@@ -184,17 +184,8 @@ abstract class ClassDefCompiler(val packageDefCompiler: PackageDefCompiler, val 
      */
     protected def compileValDef(valDef: Global#ValDef, containerName: String = memberContainerName) {
         buffer += "%s.%s = ".format(containerName, packageDefCompiler.getSymbolLocalJsName(valDef.symbol))
-        valDef.rhs match {
-            case block: Global#Block if isLambdaBlock(block) =>
-                val lambdaDef = block.stats.collectFirst { case defDef: Global#DefDef => defDef }.get
-                
-                compileFunction(lambdaDef.vparamss.flatten, false) {
-                    compileAstStatement(lambdaDef.rhs, !packageDefCompiler.typeIsEmpty(lambdaDef.tpt.tpe))
-                }
-            case _ =>
-                compileSymbol(valDef.symbol) {
-                    compileAst(valDef.rhs)
-                }
+        compileSymbol(valDef.symbol) {
+            compileAst(valDef.rhs)
         }
         buffer += ";\n"
     }
@@ -364,6 +355,7 @@ abstract class ClassDefCompiler(val packageDefCompiler: PackageDefCompiler, val 
             parameterValues.foreach { parameterValue =>
                 if (!parameterValue.hasSymbolWhich(_.name.toString.contains("$default$"))) {
                     parameterValue match {
+                        case block: Block if isLambdaBlock(block) => compileAst(block)
                         case Block(_, expr) => compileAst(expr)
                         case _ => compileAst(parameterValue)
                     }
@@ -400,9 +392,18 @@ abstract class ClassDefCompiler(val packageDefCompiler: PackageDefCompiler, val 
      */
     protected def compileAst(ast: Global#Tree, hasReturnValue: Boolean = false) {
         // A Block handles the return value itself so it has to be compiled besides all other ast types.
-        if (ast.isInstanceOf[Global#Block]) {
-            compileBlock(ast.asInstanceOf[Global#Block], hasReturnValue)
-        } else {
+        ast match {
+            case block: Global#Block if isLambdaBlock(block) =>
+                val lambdaDef = block.stats.collectFirst { case dd: Global#DefDef => dd }.get
+
+                compileFunction(lambdaDef.vparamss.flatten, false) {
+                    compileAstStatement(lambdaDef.rhs, !packageDefCompiler.typeIsEmpty(lambdaDef.tpt.tpe))
+                }
+
+            case block: Global#Block =>
+                compileBlock(block, hasReturnValue)
+
+            case _ =>
             val compiledAstIndex = buffer.length
             ast match {
                 case EmptyTree => buffer += "undefined"
