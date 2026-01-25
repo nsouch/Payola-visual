@@ -54,12 +54,25 @@ abstract class CompilerIndependentSpec extends AnyFlatSpec with should.Matchers
         compiler.compileFiles(List(scalaFile.getAbsolutePath))
 
         val compiled = Source.fromFile(fileName + ".js").mkString
-        new Expector(compiled)
+        writeTrimmedJs(compiled, fileName + ".js")
+        new Expector(compiled, fileName)
     }
 
-    class Expector(val actual: String)
+    private def writeTrimmedJs(codeContent: String, fileName: String): Unit = {
+        val fileHandle = new File(fileName)
+        val trimmedContent = codeContent
+            .linesWithSeparators
+            .map(_.trim)
+            .filter(_.nonEmpty)
+            .mkString("\n")
+
+        io.File(fileHandle).writeAll(trimmedContent)
+    }
+
+    class Expector(val actual: String, val fileName: String)
     {
         def shouldCompileTo(expected: String) {
+            writeTrimmedJs(expected, fileName + "Expected.js")
             if (normalizeWhiteSpace(actual) != normalizeWhiteSpace(expected)) {
                 println(">>>EXPECTED>>>" + normalizeWhiteSpace(expected) + "<<<")
                 println(">>>ACTUAL  >>>" + normalizeWhiteSpace(actual) + "<<<")
@@ -68,6 +81,7 @@ abstract class CompilerIndependentSpec extends AnyFlatSpec with should.Matchers
         }
 
         def shouldExactlyCompileTo(expected: String) {
+            writeTrimmedJs(expected, fileName + "Expected.js")
             if (actual != expected) {
                 println(">>>EXPECTED>>>" + expected + "<<<")
                 println(">>>ACTUAL  >>>" + actual + "<<<")

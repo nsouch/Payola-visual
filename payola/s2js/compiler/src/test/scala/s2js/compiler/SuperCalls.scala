@@ -19,8 +19,13 @@ class SuperCallSpecs extends CompilerIndependentSpec
                 s2js.runtime.client.core.get().classLoader.provide('A');
                 s2js.runtime.client.core.get().classLoader.provide('B');
 
-                A = function() { var self = this; };
-                A.prototype.m = function(x) { var self = this; return (x + 1); };
+                A = function() {
+                    var self = this;
+                };
+                A.prototype.m = function(x) {
+                    var self = this;
+                    return (x + 1);
+                };
                 A.prototype.__class__ = new s2js.runtime.client.core.Class('A', []);
 
                 B = function() { 
