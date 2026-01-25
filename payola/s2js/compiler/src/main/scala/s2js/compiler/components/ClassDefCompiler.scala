@@ -262,11 +262,14 @@ abstract class ClassDefCompiler(val packageDefCompiler: PackageDefCompiler, val 
     protected def compileSuperCall(apply: Global#Apply, methodName: String) {
         apply.fun.symbol match {
             case m: MethodSymbol => {
-                buffer += "%s.prototype.%s.apply(self, ".format(
+                buffer += "%s.prototype.%s.call(self".format(
                     packageDefCompiler.getSymbolFullJsName(m.owner),
                     packageDefCompiler.getLocalJsName(methodName)
                 )
-                compileParameterValues(apply.args, withParentheses = false, asArray = true)
+                if (apply.args.nonEmpty) {
+                    buffer += ", "
+                    compileParameterValues(apply.args, withParentheses = false, asArray = false)
+                }
                 buffer += ")"
             }
             case _ => throw new ScalaToJsException("Not implemented super call of type %s.".format(apply))

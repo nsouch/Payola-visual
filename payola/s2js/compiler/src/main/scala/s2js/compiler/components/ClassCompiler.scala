@@ -28,8 +28,13 @@ class ClassCompiler(packageDefCompiler: PackageDefCompiler, classDef: Global#Cla
 
         // Call the parent class constructor.
         parentClass.foreach { c =>
-            buffer += packageDefCompiler.getSymbolFullJsName(c.symbol) + ".apply(self, "
-            compileParameterValues(parentConstructorCall.map(_.args).getOrElse(Nil), false, true)
+            val parentArgs = parentConstructorCall.map(_.args).getOrElse(Nil)
+            buffer += packageDefCompiler.getSymbolFullJsName(c.symbol) + ".call(this"
+            
+            if (parentArgs.nonEmpty) {
+                buffer += ", "
+                compileParameterValues(parentArgs, withParentheses = false, asArray = false)
+            }
             buffer += ");\n"
         }
 
