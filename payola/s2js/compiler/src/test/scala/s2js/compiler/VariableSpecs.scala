@@ -187,7 +187,7 @@ class VariableSpecs extends CompilerIndependentSpec
                 };
                 foo.A.prototype.m1 = function() {
                     var self = this;
-                    var a = function(b) { return ('foo' + b); };
+                    var a = function($b) { return ('foo' + $b); };
                 };
                 foo.A.prototype.__class__ = new s2js.runtime.client.core.Class('foo.A', []);
             """
