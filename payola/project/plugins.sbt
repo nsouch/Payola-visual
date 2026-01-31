@@ -37,7 +37,7 @@ addSbtPlugin("com.github.sbt" % "sbt-native-packager" % "1.11.4")
 
 addSbtPlugin("com.typesafe.play" % "sbt-plugin" % "2.6.25")
 
-addSbtPlugin("ch.epfl.scala" % "sbt-bloop" % "2.0.17")
+addSbtPlugin("ch.epfl.scala" % "sbt-bloop" % "2.0.18")
 
 addSbtPlugin("org.scoverage" % "sbt-scoverage" % "2.3.0")
 
