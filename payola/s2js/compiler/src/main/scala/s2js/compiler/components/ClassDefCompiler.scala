@@ -88,7 +88,16 @@ abstract class ClassDefCompiler(val packageDefCompiler: PackageDefCompiler, val 
         "unary_$minus" -> "-",
         "$amp$amp" -> "&&",
         "$bar$bar" -> "||",
-        "unary_$bang" -> "!"
+        "unary_$bang" -> "!",
+        "unary_$tilde" -> "~"
+    )
+    /**Set of special array wrapper method names. */
+    private val ArrayWrappers = Set(
+        "wrapRefArray", 
+        "genericWrapArray", 
+        "wrapIntArray", 
+        "wrapDoubleArray", 
+        "wrapBooleanArray"
     )
 
     /**The special JavaScript characters and their escape sequences. */
@@ -429,6 +438,7 @@ abstract class ClassDefCompiler(val packageDefCompiler: PackageDefCompiler, val 
                 case tryAst: Global#Try => compileTry(tryAst)
                 case throwAst: Global#Throw => compileThrow(throwAst)
                 case matchAst: Global#Match => compileMatch(matchAst)
+                case arrayValue: Global#ArrayValue => compileArrayValues(arrayValue)
                 case _ => throw new ScalaToJsException("Not implemented AST of type %s: %s".format(
                     ast.getClass,
                     ast.toString
@@ -439,6 +449,23 @@ abstract class ClassDefCompiler(val packageDefCompiler: PackageDefCompiler, val 
             if (hasReturnValue) {
                 buffer.update(compiledAstIndex, "return " + buffer(compiledAstIndex))
             }
+        }
+    }
+
+    /**
+     * Compiles an ArrayValue.
+     * @param arrayValues The ArrayValue to compile.
+     */
+    private def compileArrayValues(arrayValues: Global#ArrayValue) {
+        if (arrayValues.elems.length == 1) {
+            compileAst(arrayValues.elems.head)
+        } else {
+            buffer += "["
+            for (i <- arrayValues.elems.indices) {
+                compileAst(arrayValues.elems(i))
+                if (i < arrayValues.elems.length - 1) buffer += ", "
+            }
+            buffer += "]"
         }
     }
 
@@ -614,8 +641,18 @@ abstract class ClassDefCompiler(val packageDefCompiler: PackageDefCompiler, val 
                 buffer += s"${fun.symbol.name.toString}("
                 compileParameterValues(args, withParentheses = false)
                 buffer += ")"
+            case Apply(fun, args) if {
+                val name = fun match {
+                        case Select(_, n) => n.toString
+                        case TypeApply(Select(_, n), _) => n.toString
+                        case _ => ""
+                    }
+                    ArrayWrappers.contains(name)
+                } => {
+                    if (args.nonEmpty) compileAst(args.head)
+                }
             case Apply(s@Select(q, name), args) if symbolIsOperator(s.symbol) => {
-                compileOperator(q, Some(args.head), name.toString)
+                compileOperator(q, args.headOption, name.toString)
             }
             case Apply(select@Select(_, _), args) if select.symbol.isSetter => {
                 compileAssign(select, args.head)

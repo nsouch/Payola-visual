@@ -130,14 +130,12 @@ class StatementSpecs extends CompilerIndependentSpec
         }
     }
 
-    it should "support not operator" in {
+    it should "support not operator (bang)" in {
         compileScalaCode(
             """
                 object o {
                     def m1() = true
                     def m2() = {
-                        val v1 = true
-                        val v2 = !v1
                         val v3 = !m1
                     }
                 }
@@ -154,6 +152,38 @@ class StatementSpecs extends CompilerIndependentSpec
                         var v1 = true;
                         var v2 = (! v1);
                         var v3 = (! o.get().m1());
+                    };
+                    obj.__class__ = new s2js.runtime.client.core.Class('o', []);
+                    return obj;
+                }), true);
+            """
+        }
+    }
+
+    it should "support bitwise not operator (tilde)" in {
+        compileScalaCode(
+            """
+                object o {
+                    def m1() = 1
+                    def m2() = {
+                        val v1 = 1
+                        val v2 = ~v1
+                        val v3 = ~m1
+                    }
+                }
+            """,
+            "tilde-operator"
+        ) shouldCompileTo {
+            """
+                s2js.runtime.client.core.get().classLoader.provide('o');
+                s2js.runtime.client.core.get().mixIn(o, new s2js.runtime.client.core.Lazy(function() {
+                    var obj = {};
+                    obj.m1 = function() { var self = this; return 1; };
+                    obj.m2 = function() {
+                        var self = this;
+                        var v1 = 1;
+                        var v2 = (~ v1);
+                        var v3 = (~ o.get().m1());
                     };
                     obj.__class__ = new s2js.runtime.client.core.Class('o', []);
                     return obj;
