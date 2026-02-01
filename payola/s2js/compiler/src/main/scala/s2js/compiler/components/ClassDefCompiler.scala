@@ -88,6 +88,8 @@ abstract class ClassDefCompiler(val packageDefCompiler: PackageDefCompiler, val 
         "unary_$minus" -> "-",
         "$amp$amp" -> "&&",
         "$bar$bar" -> "||",
+        "$amp" -> "&",
+        "$bar" -> "|",
         "unary_$bang" -> "!",
         "unary_$tilde" -> "~"
     )
@@ -204,18 +206,16 @@ abstract class ClassDefCompiler(val packageDefCompiler: PackageDefCompiler, val 
 
         if (symbol.isLazy) {
             val getterName = packageDefCompiler.getLocalJsName(symbol.name.toString.trim, symbol.isSynthetic)
-            buffer += s"$containerName.$getterName = function () {\n"
+            buffer += s"$containerName.$getterName = function() {\n"
             buffer += s"    return $containerName.${symbol.name.toString.trim}$$lzycompute();\n"
             buffer += "};\n"
         } else {
             buffer += "%s.%s = ".format(containerName, packageDefCompiler.getSymbolLocalJsName(symbol))
-            if (valDef.rhs.isEmpty) {
-                if (jsName.contains("bitmap$")) {
-                    buffer += "0"
-                } else {
-                    compileSymbol(symbol) {
-                        compileAst(valDef.rhs)
-                    }
+            if (valDef.rhs.isEmpty && jsName.contains("bitmap$")) {
+                buffer += "0"
+            } else {
+                compileSymbol(symbol) {
+                    compileAst(valDef.rhs)
                 }
             }
             buffer += ";\n"
