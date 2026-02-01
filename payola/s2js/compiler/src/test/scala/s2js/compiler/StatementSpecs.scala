@@ -136,6 +136,8 @@ class StatementSpecs extends CompilerIndependentSpec
                 object o {
                     def m1() = true
                     def m2() = {
+                        val v1 = true
+                        val v2 = !v1
                         val v3 = !m1
                     }
                 }
