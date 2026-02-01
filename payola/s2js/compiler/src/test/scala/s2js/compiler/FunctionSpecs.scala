@@ -77,4 +77,37 @@ class FunctionSpecs extends CompilerIndependentSpec
             """
         }
     }
+
+    it should "support methods with default parameters" in {
+        compileScalaCode(
+            """
+                object o {
+                    def m(a: Int = 10, b: String = "test") = a
+                    def run() = m(5)
+                }
+            """,
+            "default-parameters"
+        ) shouldCompileTo {
+            """
+                s2js.runtime.client.core.get().classLoader.provide('o');
+                s2js.runtime.client.core.get().mixIn(o, new s2js.runtime.client.core.Lazy(function() {
+                    var obj = {};
+                    obj.m = function(a, b) {
+                            var self = this;
+                            if (typeof(a) === 'undefined') { a = self.m$default$1(); }
+                            if (typeof(b) === 'undefined') { b = self.m$default$2(); }
+                            return a;
+                    };
+                    obj.m$default$1 = function() { var self = this; return 10; };
+                    obj.m$default$2 = function() { var self = this; return 'test'; };
+                    obj.run = function() {
+                        var self = this;
+                        return o.get().m(5, undefined);
+                    };
+                    obj.__class__ = new s2js.runtime.client.core.Class('o', []);
+                    return obj;
+                }), true);
+            """
+        }
+    }
 }

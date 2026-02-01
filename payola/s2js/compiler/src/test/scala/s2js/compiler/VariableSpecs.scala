@@ -193,5 +193,27 @@ class VariableSpecs extends CompilerIndependentSpec
             """
         }
     }
+
+    it should "support lazy vals" in {
+        compileScalaCode(
+            """
+                object o {
+                    lazy val x = 1 + 1
+                }
+            """,
+            "lazy-val"
+        ) shouldCompileTo {
+            """
+                s2js.runtime.client.core.get().classLoader.provide('o');
+                s2js.runtime.client.core.get().mixIn(o, new s2js.runtime.client.core.Lazy(function() {
+                    var obj = {};
+                    var x = new s2js.runtime.client.core.Lazy(function() { return 1 + 1; });
+                    obj.x = function() { return x.get(); };
+                    obj.__class__ = new s2js.runtime.client.core.Class('o', []);
+                    return obj;
+                }), true);
+            """
+        }
+    }
 }
 

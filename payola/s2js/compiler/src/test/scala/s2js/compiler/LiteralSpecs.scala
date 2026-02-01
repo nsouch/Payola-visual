@@ -189,4 +189,34 @@ class LiteralSpecs extends CompilerIndependentSpec
             """
         }
     }
+
+    it should "ignore redundant numeric conversions" in {
+        compileScalaCode(
+            """
+                object o {
+                    val b: Byte = 1
+                    def test() = {
+                        val x: Double = b
+                        val y: Int = b.toInt
+                    }
+                }
+            """,
+            "numeric-conversions"
+        ) shouldCompileTo {
+            """
+                s2js.runtime.client.core.get().classLoader.provide('o');
+                s2js.runtime.client.core.get().mixIn(o, new s2js.runtime.client.core.Lazy(function() {
+                    var obj = {};
+                    obj.b = 1;
+                    obj.test = function() {
+                        var self = this;
+                        var x = o.get().b;
+                        var y = o.get().b;
+                    };
+                    obj.__class__ = new s2js.runtime.client.core.Class('o', []);
+                    return obj;
+                }), true);
+            """
+        }
+    }
 }

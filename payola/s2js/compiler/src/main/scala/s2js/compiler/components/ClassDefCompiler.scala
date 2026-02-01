@@ -91,6 +91,7 @@ abstract class ClassDefCompiler(val packageDefCompiler: PackageDefCompiler, val 
         "unary_$bang" -> "!",
         "unary_$tilde" -> "~"
     )
+
     /**Set of special array wrapper method names. */
     private val ArrayWrappers = Set(
         "wrapRefArray", 
@@ -98,6 +99,12 @@ abstract class ClassDefCompiler(val packageDefCompiler: PackageDefCompiler, val 
         "wrapIntArray", 
         "wrapDoubleArray", 
         "wrapBooleanArray"
+    )
+
+    /**Set of numeric conversion method names. */
+    private val NumericConversions = Set(
+        "toByte", "toShort", "toInt", "toLong", 
+        "toFloat", "toDouble", "toChar"
     )
 
     /**The special JavaScript characters and their escape sequences. */
@@ -318,20 +325,25 @@ abstract class ClassDefCompiler(val packageDefCompiler: PackageDefCompiler, val 
      */
     protected def compileParameterInitialization(parameters: Option[List[Global#ValDef]]) {
         parameters.foreach { p =>
-            // Parameters with default values.
-            p.filter(_.symbol.hasDefault).foreach { parameter =>
-                buffer += "if (typeof(%1$s) === 'undefined') { %1$s = ".format(
-                    packageDefCompiler.getSymbolLocalJsName(parameter.symbol)
-                )
-                parameter.asInstanceOf[Global#ValDef].rhs match {
-                    case ident: Global#Ident if ident.symbol.owner == parameter.symbol.owner => {
-                        buffer += "self.%s".format(ident.symbol.nameString)
+            p.zipWithIndex.filter(_._1.symbol.hasDefault).foreach { case (parameter, index) =>
+                val paramName = packageDefCompiler.getSymbolLocalJsName(parameter.symbol)
+                buffer += s"if (typeof($paramName) === 'undefined') { $paramName = "
+
+                val rhs = parameter.rhs
+                if (rhs != null && !rhs.isEmpty) {
+                    rhs match {
+                        case ident: Global#Ident if ident.symbol.owner == parameter.symbol.owner =>
+                            buffer += s"self.${ident.symbol.nameString}"
+                        case x => compileAst(x)
                     }
-                    case x => compileAst(x)
+                } else {
+                    val methodName = parameter.symbol.owner.nameString
+                    val defaultMethodName = s"$$default$$${index + 1}"
+
+                    buffer += s"self.$methodName$defaultMethodName()"
                 }
                 buffer += "; }\n"
             }
-
             // Variadic parameter.
             p.filter(t => typeIsVariadic(t.tpt)).foreach { parameter =>
                 packageDefCompiler.dependencies.addRequiredSymbolName(
@@ -690,9 +702,15 @@ abstract class ClassDefCompiler(val packageDefCompiler: PackageDefCompiler, val 
                     buffer += ")"
                 }
             }
-            case Apply(select@Select(_, _), _) => {
+            case Apply(Select(qualifier, name), args) if args.isEmpty && NumericConversions.contains(name.toString) => {
+                compileAst(qualifier)
+            }
+            case Apply(select@Select(_, _), args) => {
                 compileSelect(select, isInsideApply = true)
-                compileParameterValues(apply.args)
+                val isGetter = select.symbol.isGetter || select.symbol.isAccessor
+                if (args.nonEmpty || !isGetter) {
+                    compileParameterValues(args)
+                }
             }
             case Apply(typeApply@TypeApply(_, _), _) => {
                 compileTypeApply(typeApply, isInsideApply = true)
@@ -1162,8 +1180,7 @@ abstract class ClassDefCompiler(val packageDefCompiler: PackageDefCompiler, val 
             member.isDeferred || // An abstract member without implementation
             member.isConstructor || // Multiple constructors aren't currently supported.
             member.isParameter || // A parameter of a member method
-            member.hasAccessorFlag || // A generated accesor method
-            member.nameString.matches( """^.*\$default\$[0-9]+$""") // A member generated for default parameter value
+            member.hasAccessorFlag // A generated accesor method
     }
 
     /**
