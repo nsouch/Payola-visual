@@ -199,11 +199,27 @@ abstract class ClassDefCompiler(val packageDefCompiler: PackageDefCompiler, val 
      * @param containerName Full name of the JavaScript object that should contain the member.
      */
     protected def compileValDef(valDef: Global#ValDef, containerName: String = memberContainerName) {
-        buffer += "%s.%s = ".format(containerName, packageDefCompiler.getSymbolLocalJsName(valDef.symbol))
-        compileSymbol(valDef.symbol) {
-            compileAst(valDef.rhs)
+        val symbol = valDef.symbol
+        val jsName = packageDefCompiler.getSymbolLocalJsName(symbol)
+
+        if (symbol.isLazy) {
+            val getterName = packageDefCompiler.getLocalJsName(symbol.name.toString.trim, symbol.isSynthetic)
+            buffer += s"$containerName.$getterName = function () {\n"
+            buffer += s"    return $containerName.${symbol.name.toString.trim}$$lzycompute();\n"
+            buffer += "};\n"
+        } else {
+            buffer += "%s.%s = ".format(containerName, packageDefCompiler.getSymbolLocalJsName(symbol))
+            if (valDef.rhs.isEmpty) {
+                if (jsName.contains("bitmap$")) {
+                    buffer += "0"
+                } else {
+                    compileSymbol(symbol) {
+                        compileAst(valDef.rhs)
+                    }
+                }
+            }
+            buffer += ";\n"
         }
-        buffer += ";\n"
     }
 
     /**
@@ -550,7 +566,9 @@ abstract class ClassDefCompiler(val packageDefCompiler: PackageDefCompiler, val 
      * @param thisAst The This reference AST.
      */
     private def compileThis(thisAst: Global#This) {
-        if (thisAst.hasSymbolWhich(s => s.isModule || s.isModuleClass)) {
+        if (thisAst.symbol == classDef.symbol) {
+            buffer += memberContainerName
+        } else if (thisAst.hasSymbolWhich(s => s.isModule || s.isModuleClass)) {
             buffer += packageDefCompiler.getSymbolFullJsName(thisAst.symbol)
             buffer += ".get()"
         } else {
@@ -563,7 +581,9 @@ abstract class ClassDefCompiler(val packageDefCompiler: PackageDefCompiler, val 
      * @param identifier The Ident to compile.
      */
     private def compileIdentifier(identifier: Global#Ident) {
-        if (identifier.hasSymbolWhich(s => s.isModule || s.isModuleClass)) {
+        if (identifier.symbol == classDef.symbol) {
+            buffer += memberContainerName
+        } else if (identifier.hasSymbolWhich(s => s.isModule || s.isModuleClass)) {
             buffer += packageDefCompiler.getSymbolFullJsName(identifier.symbol)
             buffer += ".get()"
         } else if (identifier.symbol.isGetter) {
@@ -711,6 +731,16 @@ abstract class ClassDefCompiler(val packageDefCompiler: PackageDefCompiler, val 
                 if (args.nonEmpty || !isGetter) {
                     compileParameterValues(args)
                 }
+            }
+            case Apply(typeApply@TypeApply(fun, _), args) if typeApply.symbol.name.toString == "synchronized" => {
+                compileAst(fun match { case Select(qual, _) => qual; case _ => fun })
+                buffer += ".$synchronized(function() {\n"
+                compileParameterValues(args, withParentheses = false)
+                buffer += "})"
+            }
+            case Apply(typeApply@TypeApply(_, _), _) if typeApply.symbol.name.toString == "asInstanceOf" => {
+                compileTypeApply(typeApply, isInsideApply = true)
+                compileParameterValues(apply.args, withParentheses = false)
             }
             case Apply(typeApply@TypeApply(_, _), _) => {
                 compileTypeApply(typeApply, isInsideApply = true)

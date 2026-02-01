@@ -159,7 +159,7 @@ class PackageDefCompiler(val global: Global, private val sourceFile: AbstractFil
       * @return The name.
       */
     def getSymbolJsName(symbol: Global#Symbol): String = {
-        if (symbol.isLocal) getSymbolLocalJsName(symbol) else getSymbolFullJsName(symbol)
+        if (symbol.isLocalToBlock) getSymbolLocalJsName(symbol) else getSymbolFullJsName(symbol)
     }
 
     /**
@@ -193,7 +193,11 @@ class PackageDefCompiler(val global: Global, private val sourceFile: AbstractFil
         if (symbol.owner.fullName.startsWith("s2js.adapters")) {
             name
         } else {
-            getLocalJsName(name, !symbol.isMethod && symbol.isSynthetic)
+            if (symbol.isLazy && !symbol.isMethod) {
+                "lazyval_" + name
+            } else {
+                getLocalJsName(name, !symbol.isMethod && symbol.isSynthetic)
+            }
         }
     }
 

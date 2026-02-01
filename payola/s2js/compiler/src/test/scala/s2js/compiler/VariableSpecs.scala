@@ -207,8 +207,22 @@ class VariableSpecs extends CompilerIndependentSpec
                 s2js.runtime.client.core.get().classLoader.provide('o');
                 s2js.runtime.client.core.get().mixIn(o, new s2js.runtime.client.core.Lazy(function() {
                     var obj = {};
-                    var x = new s2js.runtime.client.core.Lazy(function() { return 1 + 1; });
-                    obj.x = function() { return x.get(); };
+                    obj.$x = function () {
+                        return obj.x$lzycompute();
+                    };
+                    obj.bitmap$0 = 0;
+                    obj.x$lzycompute = function() {
+                        var self = this;
+                        obj.$synchronized(function() {
+                            if ((! obj.bitmap$0)) {
+                                obj.lazyval_x = s2js.runtime.client.core.get().asInstanceOf(2, 'scala.Int');
+                                obj.bitmap$0 = true;
+                            } else {
+                                undefined;
+                            }
+                        });
+                        return obj.lazyval_x;
+                    };
                     obj.__class__ = new s2js.runtime.client.core.Class('o', []);
                     return obj;
                 }), true);
