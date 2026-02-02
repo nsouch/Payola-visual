@@ -210,7 +210,7 @@ abstract class ClassDefCompiler(val packageDefCompiler: PackageDefCompiler, val 
             buffer += s"    return $containerName.${symbol.name.toString.trim}$$lzycompute();\n"
             buffer += "};\n"
         } else {
-            buffer += "%s.%s = ".format(containerName, packageDefCompiler.getSymbolLocalJsName(symbol))
+            buffer += "%s.%s = ".format(containerName, jsName)
             if (valDef.rhs.isEmpty && jsName.contains("bitmap$")) {
                 buffer += "0"
             } else {
@@ -653,8 +653,11 @@ abstract class ClassDefCompiler(val packageDefCompiler: PackageDefCompiler, val 
                 }
 
                 buffer += (if (select.hasSymbolWhich(s => s.isSetter)) name.stripSuffix("_$eq") else name)
-                if (!isInsideApply && select.hasSymbolWhich(s => s.isMethod && !s.isGetter)) {
-                    // If the select is actually a method call, parentheses has to be added after the name.
+
+                val isLazyGetter = select.hasSymbolWhich(s => s.isLazy && (s.isGetter || s.isMethod))
+                val isNormalMethod = select.hasSymbolWhich(s => s.isMethod && !s.isGetter)
+
+                if (!isInsideApply && (isNormalMethod || isLazyGetter)) {
                     buffer += "()"
                 }
 
