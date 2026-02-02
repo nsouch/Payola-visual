@@ -196,7 +196,7 @@ class PackageDefCompiler(val global: Global, private val sourceFile: AbstractFil
             if (symbol.isLazy && !symbol.isMethod) {
                 "lazyval_" + name
             } else {
-                getLocalJsName(name, !symbol.isMethod && symbol.isSynthetic)
+                getLocalJsName(name, (!symbol.isMethod && symbol.isSynthetic) || symbol.isLazy)
             }
         }
     }
