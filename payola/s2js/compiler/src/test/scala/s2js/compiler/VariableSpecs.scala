@@ -207,7 +207,7 @@ class VariableSpecs extends CompilerIndependentSpec
                 s2js.runtime.client.core.get().classLoader.provide('o');
                 s2js.runtime.client.core.get().mixIn(o, new s2js.runtime.client.core.Lazy(function() {
                     var obj = {};
-                    obj.$x = function () {
+                    obj.$x = function() {
                         return obj.x$lzycompute();
                     };
                     obj.bitmap$0 = 0;
@@ -222,6 +222,107 @@ class VariableSpecs extends CompilerIndependentSpec
                             }
                         });
                         return obj.lazyval_x;
+                    };
+                    obj.__class__ = new s2js.runtime.client.core.Class('o', []);
+                    return obj;
+                }), true);
+            """
+        }
+    }
+
+    it should "support lazy vals calls with correct prefix" in {
+        compileScalaCode(
+            """
+                package p
+                object o {
+                    lazy val x = 42
+                    def test = x
+                }
+            """,
+            "lazy-val-calls"
+        ) shouldCompileTo {
+            """
+                s2js.runtime.client.core.get().classLoader.provide('p.o');
+                s2js.runtime.client.core.get().mixIn(p.o, new s2js.runtime.client.core.Lazy(function() {
+                    var obj = {};
+                    obj.$x = function() {
+                        return obj.x$lzycompute();
+                    };
+                    obj.bitmap$0 = 0;
+                    obj.x$lzycompute = function() {
+                        var self = this;
+                        obj.$synchronized(function() {
+                            if ((! obj.bitmap$0)) {
+                                obj.lazyval_x = s2js.runtime.client.core.get().asInstanceOf(42, 'scala.Int');
+                                obj.bitmap$0 = true;
+                            } else {
+                                undefined;
+                            }
+                        });
+                        return obj.lazyval_x;
+                    };
+                    obj.test = function() {
+                        var self = this;
+                        return obj.$x();
+                    };
+                    obj.__class__ = new s2js.runtime.client.core.Class('p.o', []);
+                    return obj;
+                }), true);
+            """
+        }
+    }
+
+    it should "support multiple lazy vals calls" in {
+        compileScalaCode(
+            """
+                object o {
+                    lazy val x = 1 + 1
+    
+                    def computeY(input: Int): Int = input * 3
+                    
+                    lazy val y = computeY(x)
+                }
+            """,
+            "lazy-val-multiple"
+        ) shouldCompileTo {
+            """
+                s2js.runtime.client.core.get().classLoader.provide('o');
+                s2js.runtime.client.core.get().mixIn(o, new s2js.runtime.client.core.Lazy(function() {
+                    var obj = {};
+                    obj.$x = function() {
+                        return obj.x$lzycompute();
+                    };
+                    obj.$y = function() {
+                        return obj.y$lzycompute();
+                    };
+                    obj.bitmap$0 = 0;
+                    obj.x$lzycompute = function() {
+                        var self = this;
+                        obj.$synchronized(function() {
+                            if (((obj.bitmap$0 & 1) == 0)) {
+                                obj.lazyval_x = s2js.runtime.client.core.get().asInstanceOf(2, 'scala.Int');
+                                obj.bitmap$0 = (obj.bitmap$0 | 1);
+                            } else {
+                                undefined;
+                            }
+                        });
+                        return obj.lazyval_x;
+                    };
+                    obj.computeY = function(input) {
+                        var self = this;
+                        return (input * 3);
+                    };
+                    obj.y$lzycompute = function() {
+                        var self = this;
+                        obj.$synchronized(function() {
+                            if (((obj.bitmap$0 & 2) == 0)) {
+                                obj.lazyval_y = s2js.runtime.client.core.get().asInstanceOf(obj.computeY(obj.$x()), 'scala.Int');
+                                obj.bitmap$0 = (obj.bitmap$0 | 2);
+                            } else {
+                                undefined;
+                            }
+                        });
+                        return obj.lazyval_y;
                     };
                     obj.__class__ = new s2js.runtime.client.core.Class('o', []);
                     return obj;
