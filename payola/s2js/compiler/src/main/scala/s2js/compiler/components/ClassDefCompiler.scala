@@ -562,13 +562,22 @@ abstract class ClassDefCompiler(val packageDefCompiler: PackageDefCompiler, val 
     }
 
     /**
+      * Returns if the current access of the symbol is an access of the class itself or
+      * its companion object from the companion object or the class respectively.
+      *
+      * @param symbol The symbol to check.
+      * @return True if the access is internal, false otherwise.
+      */
+    private def isInternalAccess(symbol: Global#Symbol): Boolean = {
+        symbol == classDef.symbol || symbol == classDef.symbol.sourceModule
+    }
+
+    /**
      * Compiles a This reference.
      * @param thisAst The This reference AST.
      */
     private def compileThis(thisAst: Global#This) {
-        if (thisAst.symbol == classDef.symbol) {
-            buffer += memberContainerName
-        } else if (thisAst.hasSymbolWhich(s => s.isModule || s.isModuleClass)) {
+        if (thisAst.hasSymbolWhich(s => (s.isModule || s.isModuleClass) && !isInternalAccess(s))) {
             buffer += packageDefCompiler.getSymbolFullJsName(thisAst.symbol)
             buffer += ".get()"
         } else {
@@ -581,9 +590,7 @@ abstract class ClassDefCompiler(val packageDefCompiler: PackageDefCompiler, val 
      * @param identifier The Ident to compile.
      */
     private def compileIdentifier(identifier: Global#Ident) {
-        if (identifier.symbol == classDef.symbol) {
-            buffer += memberContainerName
-        } else if (identifier.hasSymbolWhich(s => s.isModule || s.isModuleClass)) {
+        if (identifier.hasSymbolWhich(s => (s.isModule || s.isModuleClass) && !isInternalAccess(s))) {
             buffer += packageDefCompiler.getSymbolFullJsName(identifier.symbol)
             buffer += ".get()"
         } else if (identifier.symbol.isGetter) {

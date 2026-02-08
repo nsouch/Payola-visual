@@ -425,6 +425,66 @@ class ClassDefSpecs extends CompilerIndependentSpec
         }
     }
 
+    "Objects" should "handle this correctly" in {
+        compileScalaCode(
+            """
+                package pkg
+
+                object o {
+                    val v1 = "test"
+                    def m1() {
+                        val x = this.v1
+                    }
+                }
+            """,
+            "objects-this"
+        ) shouldCompileTo {
+            """
+                s2js.runtime.client.core.get().classLoader.provide('pkg.o');
+                s2js.runtime.client.core.get().mixIn(pkg.o, new s2js.runtime.client.core.Lazy(function() {
+                    var obj = {};
+                    obj.v1 = 'test';
+                    obj.m1 = function() {
+                        var self = this;
+                        var x = self.v1;
+                    };
+                    obj.__class__ = new s2js.runtime.client.core.Class('pkg.o', []);
+                    return obj;
+                }), true);
+            """
+        }
+    }
+
+    "Objects" should "handle assignement of outer object field correctly" in {
+        compileScalaCode(
+            """
+                package pkg
+
+                object o {
+                    var v1 = "test"
+                    def m1() {
+                        v1 = "new test"
+                    }
+                }
+            """,
+            "objects-this-assignement"
+        ) shouldCompileTo {
+            """
+                s2js.runtime.client.core.get().classLoader.provide('pkg.o');
+                s2js.runtime.client.core.get().mixIn(pkg.o, new s2js.runtime.client.core.Lazy(function() {
+                    var obj = {};
+                    obj.v1 = 'test';
+                    obj.m1 = function() {
+                        var self = this;
+                        self.v1 = 'new test';
+                    };
+                    obj.__class__ = new s2js.runtime.client.core.Class('pkg.o', []);
+                    return obj;
+                }), true);
+            """
+        }
+    }
+
     it should "can inherit from classes and traits" in {
         compileScalaCode(
             """

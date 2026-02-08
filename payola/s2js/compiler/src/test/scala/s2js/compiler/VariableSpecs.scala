@@ -201,7 +201,7 @@ class VariableSpecs extends CompilerIndependentSpec
                     lazy val x = 1 + 1
                 }
             """,
-            "lazy-val"
+            "lazy-val-basic"
         ) shouldCompileTo {
             """
                 s2js.runtime.client.core.get().classLoader.provide('o');
@@ -213,15 +213,15 @@ class VariableSpecs extends CompilerIndependentSpec
                     obj.bitmap$0 = 0;
                     obj.x$lzycompute = function() {
                         var self = this;
-                        obj.$synchronized(function() {
-                            if ((! obj.bitmap$0)) {
-                                obj.lazyval_x = s2js.runtime.client.core.get().asInstanceOf(2, 'scala.Int');
-                                obj.bitmap$0 = true;
+                        self.$synchronized(function() {
+                            if ((! self.bitmap$0)) {
+                                self.lazyval_x = s2js.runtime.client.core.get().asInstanceOf(2, 'scala.Int');
+                                self.bitmap$0 = true;
                             } else {
                                 undefined;
                             }
                         });
-                        return obj.lazyval_x;
+                        return self.lazyval_x;
                     };
                     obj.__class__ = new s2js.runtime.client.core.Class('o', []);
                     return obj;
@@ -251,19 +251,19 @@ class VariableSpecs extends CompilerIndependentSpec
                     obj.bitmap$0 = 0;
                     obj.x$lzycompute = function() {
                         var self = this;
-                        obj.$synchronized(function() {
-                            if ((! obj.bitmap$0)) {
-                                obj.lazyval_x = s2js.runtime.client.core.get().asInstanceOf(42, 'scala.Int');
-                                obj.bitmap$0 = true;
+                        self.$synchronized(function() {
+                            if ((! self.bitmap$0)) {
+                                self.lazyval_x = s2js.runtime.client.core.get().asInstanceOf(42, 'scala.Int');
+                                self.bitmap$0 = true;
                             } else {
                                 undefined;
                             }
                         });
-                        return obj.lazyval_x;
+                        return self.lazyval_x;
                     };
                     obj.test = function() {
                         var self = this;
-                        return obj.$x();
+                        return self.$x();
                     };
                     obj.__class__ = new s2js.runtime.client.core.Class('p.o', []);
                     return obj;
@@ -298,15 +298,15 @@ class VariableSpecs extends CompilerIndependentSpec
                     obj.bitmap$0 = 0;
                     obj.x$lzycompute = function() {
                         var self = this;
-                        obj.$synchronized(function() {
-                            if (((obj.bitmap$0 & 1) == 0)) {
-                                obj.lazyval_x = s2js.runtime.client.core.get().asInstanceOf(2, 'scala.Int');
-                                obj.bitmap$0 = (obj.bitmap$0 | 1);
+                        self.$synchronized(function() {
+                            if (((self.bitmap$0 & 1) == 0)) {
+                                self.lazyval_x = s2js.runtime.client.core.get().asInstanceOf(2, 'scala.Int');
+                                self.bitmap$0 = (self.bitmap$0 | 1);
                             } else {
                                 undefined;
                             }
                         });
-                        return obj.lazyval_x;
+                        return self.lazyval_x;
                     };
                     obj.computeY = function(input) {
                         var self = this;
@@ -314,15 +314,15 @@ class VariableSpecs extends CompilerIndependentSpec
                     };
                     obj.y$lzycompute = function() {
                         var self = this;
-                        obj.$synchronized(function() {
-                            if (((obj.bitmap$0 & 2) == 0)) {
-                                obj.lazyval_y = s2js.runtime.client.core.get().asInstanceOf(obj.computeY(obj.$x()), 'scala.Int');
-                                obj.bitmap$0 = (obj.bitmap$0 | 2);
+                        self.$synchronized(function() {
+                            if (((self.bitmap$0 & 2) == 0)) {
+                                self.lazyval_y = s2js.runtime.client.core.get().asInstanceOf(self.computeY(self.$x()), 'scala.Int');
+                                self.bitmap$0 = (self.bitmap$0 | 2);
                             } else {
                                 undefined;
                             }
                         });
-                        return obj.lazyval_y;
+                        return self.lazyval_y;
                     };
                     obj.__class__ = new s2js.runtime.client.core.Class('o', []);
                     return obj;
