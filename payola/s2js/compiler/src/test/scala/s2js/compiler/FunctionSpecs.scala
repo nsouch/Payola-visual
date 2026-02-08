@@ -44,9 +44,9 @@ class FunctionSpecs extends CompilerIndependentSpec
                     obj.start = function() {
                         var self = this;
                         var x = new F();
-                        o.get().f2(function($x) { return x.f1($x); });
-                        o.get().f2(function($x) { return o.get().f3($x); });
-                        o.get().f2(function($x) { return ('no' + $x); });
+                        self.f2(function($x) { return x.f1($x); });
+                        self.f2(function($x) { return self.f3($x); });
+                        self.f2(function($x) { return ('no' + $x); });
                     };
                     obj.__class__ = new s2js.runtime.client.core.Class('o', []);
                     return obj;
@@ -102,9 +102,127 @@ class FunctionSpecs extends CompilerIndependentSpec
                     obj.m$default$2 = function() { var self = this; return 'test'; };
                     obj.run = function() {
                         var self = this;
-                        return o.get().m(5, undefined);
+                        return self.m(5, undefined);
                     };
                     obj.__class__ = new s2js.runtime.client.core.Class('o', []);
+                    return obj;
+                }), true);
+            """
+        }
+    }
+
+    "Internal references" should "use 'self' for both the object itself and its members" in {
+        compileScalaCode(
+            """
+                package p
+                object o {
+                    def f(s: String) = s
+                    
+                    def start() {
+                        val member_ref = f _
+                        val self_ref = o
+                    }
+                }
+            """,
+            "internal-references"
+        ) shouldCompileTo {
+            """
+                s2js.runtime.client.core.get().classLoader.provide('p.o');
+                s2js.runtime.client.core.get().mixIn(p.o, new s2js.runtime.client.core.Lazy(function() {
+                    var obj = {};
+                    obj.f = function(s) {
+                        var self = this;
+                        return s;
+                    };
+                    obj.start = function() {
+                        var self = this;
+                        var member_ref = function($s) { return self.f($s); }
+                        ;
+                        var self_ref = self;
+                    };
+                    obj.__class__ = new s2js.runtime.client.core.Class('p.o', []);
+                    return obj;
+                }), true);
+            """
+        }
+    }
+
+    "Nested functions" should "propagate self and maintain local member access" in {
+        compileScalaCode(
+            """
+                package p
+                object o {
+                    def m(x: Int) = x + 1
+
+                    def start() {
+                        val f = (x: Int) => m(x)
+                    }
+                }
+            """,
+            "nested-functions"
+        ) shouldCompileTo {
+            """
+                s2js.runtime.client.core.get().classLoader.provide('p.o');
+                s2js.runtime.client.core.get().mixIn(p.o, new s2js.runtime.client.core.Lazy(function() {
+                    var obj = {};
+                    obj.m = function(x) {
+                        var self = this;
+                        return (x + 1);
+                    };
+                    obj.start = function() {
+                        var self = this;
+                        var f = function($x) {
+                            return self.m($x);
+                        };
+                    };
+                    obj.__class__ = new s2js.runtime.client.core.Class('p.o', []);
+                    return obj;
+                }), true);
+            """
+        }
+    }
+
+    "Nested lazy access" should "call the lazy getter via self inside a function" in {
+        compileScalaCode(
+            """
+                package p
+                object o {
+                    lazy val x = 42
+                    
+                    def test() {
+                        val f = () => x
+                    }
+                }
+            """,
+            "nested-lazy-access"
+        ) shouldCompileTo {
+            """
+                s2js.runtime.client.core.get().classLoader.provide('p.o');
+                s2js.runtime.client.core.get().mixIn(p.o, new s2js.runtime.client.core.Lazy(function() {
+                    var obj = {};
+                    obj.$x = function() {
+                        return obj.x$lzycompute();
+                    };
+                    obj.bitmap$0 = 0;
+                    obj.x$lzycompute = function() {
+                        var self = this;
+                        self.$synchronized(function() {
+                            if ((! self.bitmap$0)) {
+                                self.lazyval_x = s2js.runtime.client.core.get().asInstanceOf(42, 'scala.Int');
+                                self.bitmap$0 = true;
+                            } else {
+                                undefined;
+                            }
+                        });
+                        return self.lazyval_x;
+                    };
+                    obj.test = function() {
+                        var self = this;
+                        var f = function() {
+                            return self.$x();
+                        };
+                    };
+                    obj.__class__ = new s2js.runtime.client.core.Class('p.o', []);
                     return obj;
                 }), true);
             """

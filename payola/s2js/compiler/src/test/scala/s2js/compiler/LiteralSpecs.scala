@@ -210,8 +210,8 @@ class LiteralSpecs extends CompilerIndependentSpec
                     obj.b = 1;
                     obj.test = function() {
                         var self = this;
-                        var x = o.get().b;
-                        var y = o.get().b;
+                        var x = self.b;
+                        var y = self.b;
                     };
                     obj.__class__ = new s2js.runtime.client.core.Class('o', []);
                     return obj;

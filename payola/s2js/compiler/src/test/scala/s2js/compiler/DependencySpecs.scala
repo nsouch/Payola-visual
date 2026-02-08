@@ -79,7 +79,7 @@ class DependencySpecs extends CompilerIndependentSpec
                 s2js.runtime.client.core.get().mixIn(o1, new s2js.runtime.client.core.Lazy(function() {
                     var obj = {};
                     obj.f1 = 'aaaa';
-                    obj.m1 = function() { var self = this; window.alert(o1.get().f1); };
+                    obj.m1 = function() { var self = this; window.alert(self.f1); };
                     obj.__class__ = new s2js.runtime.client.core.Class('o1', []);
                     return obj;
                 }), true);

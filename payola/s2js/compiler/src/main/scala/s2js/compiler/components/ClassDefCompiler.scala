@@ -590,13 +590,17 @@ abstract class ClassDefCompiler(val packageDefCompiler: PackageDefCompiler, val 
      * @param identifier The Ident to compile.
      */
     private def compileIdentifier(identifier: Global#Ident) {
-        if (identifier.hasSymbolWhich(s => (s.isModule || s.isModuleClass) && !isInternalAccess(s))) {
-            buffer += packageDefCompiler.getSymbolFullJsName(identifier.symbol)
+        val symbol = identifier.symbol
+
+        if (isInternalAccess(symbol)) {
+            buffer += "self"
+        } else if (identifier.hasSymbolWhich(s => (s.isModule || s.isModuleClass))) {
+            buffer += packageDefCompiler.getSymbolFullJsName(symbol)
             buffer += ".get()"
-        } else if (identifier.symbol.isGetter) {
-            buffer += "self.%s".format(packageDefCompiler.getSymbolLocalJsName(identifier.symbol))
+        } else if (symbol.isGetter) { // TODO: cover testcase.
+            buffer += "self.%s".format(packageDefCompiler.getSymbolLocalJsName(symbol))
         } else {
-            buffer += packageDefCompiler.getSymbolJsName(identifier.symbol)
+            buffer += packageDefCompiler.getSymbolJsName(symbol)
         }
     }
 
@@ -642,13 +646,17 @@ abstract class ClassDefCompiler(val packageDefCompiler: PackageDefCompiler, val 
                 compileOperator(qualifier, None, name)
             }
             case _ if select.hasSymbolWhich(s => s.isModule || s.isModuleClass) => {
-                val jsName = packageDefCompiler.getSymbolFullJsName(select.symbol)
-                if (jsName != "") {
-                    buffer += jsName
-                    if (!packageDefCompiler.adapterPackagesNames.exists(select.symbol.fullName.startsWith(_))) {
-                        buffer += ".get()"
+                if (isInternalAccess(select.symbol)) {
+                    buffer += "self"
+                } else {
+                    val jsName = packageDefCompiler.getSymbolFullJsName(select.symbol)
+                    if (jsName != "") {
+                        buffer += jsName
+                        if (!packageDefCompiler.adapterPackagesNames.exists(select.symbol.fullName.startsWith(_))) {
+                            buffer += ".get()"
+                        }
+                        buffer += subSelectToken
                     }
-                    buffer += subSelectToken
                 }
                 packageDefCompiler.dependencies.addRequiredSymbol(select.symbol)
             }
