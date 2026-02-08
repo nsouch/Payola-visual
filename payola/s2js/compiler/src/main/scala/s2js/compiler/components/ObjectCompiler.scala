@@ -18,6 +18,8 @@ class ObjectCompiler(packageDefCompiler: PackageDefCompiler, classDef: Global#Cl
             buffer += "s2js.runtime.client.core.get().mixIn(%s, ".format(fullJsName)
             buffer += "new s2js.runtime.client.core.Lazy(function() {\n"
             buffer += "var %s = {};\n".format(memberContainerName)
+            // TODO: The $synchronized method has to be defined. in object or core?
+            // buffer += "%s.$synchronized = function(f) { return f(); };\n".format(memberContainerName)
 
             super.compile(buffer)
 
