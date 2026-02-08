@@ -88,6 +88,8 @@ abstract class ClassDefCompiler(val packageDefCompiler: PackageDefCompiler, val 
         "unary_$minus" -> "-",
         "$amp$amp" -> "&&",
         "$bar$bar" -> "||",
+        "$amp" -> "&",
+        "$bar" -> "|",
         "unary_$bang" -> "!",
         "unary_$tilde" -> "~"
     )
@@ -199,11 +201,25 @@ abstract class ClassDefCompiler(val packageDefCompiler: PackageDefCompiler, val 
      * @param containerName Full name of the JavaScript object that should contain the member.
      */
     protected def compileValDef(valDef: Global#ValDef, containerName: String = memberContainerName) {
-        buffer += "%s.%s = ".format(containerName, packageDefCompiler.getSymbolLocalJsName(valDef.symbol))
-        compileSymbol(valDef.symbol) {
-            compileAst(valDef.rhs)
+        val symbol = valDef.symbol
+        val jsName = packageDefCompiler.getSymbolLocalJsName(symbol)
+
+        if (symbol.isLazy) {
+            val getterName = packageDefCompiler.getLocalJsName(symbol.name.toString.trim, symbol.isSynthetic)
+            buffer += s"$containerName.$getterName = function() {\n"
+            buffer += s"    return $containerName.${symbol.name.toString.trim}$$lzycompute();\n"
+            buffer += "};\n"
+        } else {
+            buffer += "%s.%s = ".format(containerName, jsName)
+            if (valDef.rhs.isEmpty && jsName.contains("bitmap$")) {
+                buffer += "0"
+            } else {
+                compileSymbol(symbol) {
+                    compileAst(valDef.rhs)
+                }
+            }
+            buffer += ";\n"
         }
-        buffer += ";\n"
     }
 
     /**
@@ -546,11 +562,22 @@ abstract class ClassDefCompiler(val packageDefCompiler: PackageDefCompiler, val 
     }
 
     /**
+      * Returns if the current access of the symbol is an access of the class itself or
+      * its companion object from the companion object or the class respectively.
+      *
+      * @param symbol The symbol to check.
+      * @return True if the access is internal, false otherwise.
+      */
+    private def isInternalAccess(symbol: Global#Symbol): Boolean = {
+        symbol == classDef.symbol || symbol == classDef.symbol.sourceModule
+    }
+
+    /**
      * Compiles a This reference.
      * @param thisAst The This reference AST.
      */
     private def compileThis(thisAst: Global#This) {
-        if (thisAst.hasSymbolWhich(s => s.isModule || s.isModuleClass)) {
+        if (thisAst.hasSymbolWhich(s => (s.isModule || s.isModuleClass) && !isInternalAccess(s))) {
             buffer += packageDefCompiler.getSymbolFullJsName(thisAst.symbol)
             buffer += ".get()"
         } else {
@@ -563,7 +590,7 @@ abstract class ClassDefCompiler(val packageDefCompiler: PackageDefCompiler, val 
      * @param identifier The Ident to compile.
      */
     private def compileIdentifier(identifier: Global#Ident) {
-        if (identifier.hasSymbolWhich(s => s.isModule || s.isModuleClass)) {
+        if (identifier.hasSymbolWhich(s => (s.isModule || s.isModuleClass) && !isInternalAccess(s))) {
             buffer += packageDefCompiler.getSymbolFullJsName(identifier.symbol)
             buffer += ".get()"
         } else if (identifier.symbol.isGetter) {
@@ -633,8 +660,11 @@ abstract class ClassDefCompiler(val packageDefCompiler: PackageDefCompiler, val 
                 }
 
                 buffer += (if (select.hasSymbolWhich(s => s.isSetter)) name.stripSuffix("_$eq") else name)
-                if (!isInsideApply && select.hasSymbolWhich(s => s.isMethod && !s.isGetter)) {
-                    // If the select is actually a method call, parentheses has to be added after the name.
+
+                val isLazyGetter = select.hasSymbolWhich(s => s.isLazy && (s.isGetter || s.isMethod))
+                val isNormalMethod = select.hasSymbolWhich(s => s.isMethod && !s.isGetter)
+
+                if (!isInsideApply && (isNormalMethod || isLazyGetter)) {
                     buffer += "()"
                 }
 
@@ -711,6 +741,16 @@ abstract class ClassDefCompiler(val packageDefCompiler: PackageDefCompiler, val 
                 if (args.nonEmpty || !isGetter) {
                     compileParameterValues(args)
                 }
+            }
+            case Apply(typeApply@TypeApply(fun, _), args) if typeApply.symbol.name.toString == "synchronized" => {
+                compileAst(fun match { case Select(qual, _) => qual; case _ => fun })
+                buffer += ".$synchronized(function() {\n"
+                compileParameterValues(args, withParentheses = false)
+                buffer += "})"
+            }
+            case Apply(typeApply@TypeApply(_, _), _) if typeApply.symbol.name.toString == "asInstanceOf" => {
+                compileTypeApply(typeApply, isInsideApply = true)
+                compileParameterValues(apply.args, withParentheses = false)
             }
             case Apply(typeApply@TypeApply(_, _), _) => {
                 compileTypeApply(typeApply, isInsideApply = true)
